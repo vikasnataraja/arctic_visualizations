@@ -98,6 +98,7 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
             land_tiff_hypsometric = load_geotiff('data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif')
             ax.imshow(land_tiff_hypsometric, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
+        # TODO: Find a better way to pre-load this to avoid re-loading at every call
         elif land == 'natural':
             land_tiff_natural = load_geotiff('data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif')
             ax.imshow(land_tiff_natural, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
