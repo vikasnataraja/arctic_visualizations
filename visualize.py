@@ -3,8 +3,6 @@ import argparse
 import pandas as pd
 import datetime
 import matplotlib
-import platform
-import rasterio
 import multiprocessing
 import cartopy
 import numpy as np
@@ -23,35 +21,11 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
 from util.plot_util import MPL_STYLE_PATH, sic_cmap
-from util.util import format_time, parent_dir
+import util.util as viz_utils
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-
-
-def get_cpu_processes():
-
-    if (platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows'):
-        cores = int(multiprocessing.cpu_count()/4)
-
-    else:
-        cores = multiprocessing.cpu_count()
-
-    return cores
-
-
-def load_geotiff(filepath):
-
-    dset = rasterio.open(filepath)
-
-    band1 = dset.read(1)
-    band2 = dset.read(2)
-    band3 = dset.read(3)
-    land_tiff = np.stack([band1, band2, band3], axis=-1)
-    dset.close()
-
-    return land_tiff
 
 
 
@@ -83,13 +57,10 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
     if land is not None:
 
         if land == 'topo' or land == 'hypso':
-            # load into memory ~ 700mb each
-            land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
             ax.imshow(land_tiff_hypsometric, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
         # TODO: Find a better way to pre-load this to avoid re-loading at every call
         elif land == 'natural':
-            land_tiff_natural = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif'))
             ax.imshow(land_tiff_natural, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
         else:
@@ -328,12 +299,12 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dx=20, dy=5, dt=5):
 
     # p3 image graphic to be used as scatter marker
-    img_p3 = Image.open(os.path.join(parent_dir, 'data/assets/p3_red_transparent.png'))
+    img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
     img_p3 = img_p3.resize((int(20*1.2), 20))
 
     if df_g3 is not None:
         # G-III image graphic to be used as scatter marker
-        img_g3 = Image.open(os.path.join(parent_dir, 'data/assets/giii_blue_transparent.png'))
+        img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
         img_g3 = img_g3.resize((int(20*1.2), 20))
 
 
@@ -348,8 +319,8 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     # now for the extras
     if overlay_sic:
         # read sea ice data file and lat-lons
-        fsic = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
-        fgeo = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
+        fsic = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
+        fgeo = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
 
         # AMSR2 Sea Ice Concentration
         sic = fsic.select('ASI Ice Concentration')[:]
@@ -366,10 +337,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     if underlay_blue_marble is not None:
         for type in underlay_blue_marble:
             if 'WORLD' == type.upper(): # filename and image size is different for world
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
+                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
 
             else:
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper())))
+                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper())))
 
     # save images in dirs with dates
     outdir_with_date = os.path.join(outdir, ymd)
@@ -378,7 +349,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     if parallel:
         p_args = create_args_parallel(df_p3, df_g3, dt_idx_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir_with_date)
-        pool = multiprocessing.Pool(processes=get_cpu_processes())
+        pool = multiprocessing.Pool(processes=viz_utils.get_cpu_processes())
         pool.starmap(make_figures, p_args)
         pool.close()
 
@@ -483,6 +454,8 @@ ccrs_ortho = ccrs.Orthographic(central_longitude=-50, central_latitude=80)
 ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=500e3)
 ccrs_geog = ccrs.PlateCarree()
 
+# load in land
+land_tiff_hypsometric, land_tiff_natural = viz_utils.load_land_features()
 
 if __name__ == '__main__':
 
@@ -509,8 +482,8 @@ if __name__ == '__main__':
         g3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
 
     else:
-        p3_iwg_file = os.path.join(parent_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
-        g3_iwg_file = os.path.join(parent_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
+        p3_iwg_file = os.path.join(viz_utils.parent_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
+        g3_iwg_file = os.path.join(viz_utils.parent_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
 
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
     df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
@@ -521,5 +494,5 @@ if __name__ == '__main__':
     plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
-    sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = format_time(exec_total_time.total_seconds())
+    sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
     print('\n\nTotal Execution Time: {}:{}:{}.{}\n\n'.format(sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs))
