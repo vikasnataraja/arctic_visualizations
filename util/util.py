@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
+
 def format_time(total_seconds):
     """
     Convert seconds to hours, minutes, seconds, and milliseconds.

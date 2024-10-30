@@ -23,7 +23,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
 from util.plot_util import MPL_STYLE_PATH, sic_cmap
-from util.util import format_time
+from util.util import format_time, parent_dir
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -84,12 +84,12 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
 
         if land == 'topo' or land == 'hypso':
             # load into memory ~ 700mb each
-            land_tiff_hypsometric = load_geotiff('data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif')
+            land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
             ax.imshow(land_tiff_hypsometric, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
         # TODO: Find a better way to pre-load this to avoid re-loading at every call
         elif land == 'natural':
-            land_tiff_natural = load_geotiff('data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif')
+            land_tiff_natural = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif'))
             ax.imshow(land_tiff_natural, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
         else:
@@ -263,7 +263,6 @@ def read_g3_iwg(fname, mts=False):
 
 
 
-
 def report_memory_usage(arr):
     byte_usage = arr.nbytes
     if byte_usage < 1024:
@@ -326,15 +325,15 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
 
 
 
-def plot_flight_path(df_p3, df_g3=None, dx=20, dy=5, dt=5, overlay_sic=False, underlay_blue_marble=None, parallel=False):
+def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dx=20, dy=5, dt=5):
 
     # p3 image graphic to be used as scatter marker
-    img_p3 = Image.open('data/assets/p3_red_transparent.png')
+    img_p3 = Image.open(os.path.join(parent_dir, 'data/assets/p3_red_transparent.png'))
     img_p3 = img_p3.resize((int(20*1.2), 20))
 
     if df_g3 is not None:
         # G-III image graphic to be used as scatter marker
-        img_g3 = Image.open('data/assets/giii_blue_transparent.png')
+        img_g3 = Image.open(os.path.join(parent_dir, 'data/assets/giii_blue_transparent.png'))
         img_g3 = img_g3.resize((int(20*1.2), 20))
 
 
@@ -349,8 +348,8 @@ def plot_flight_path(df_p3, df_g3=None, dx=20, dy=5, dt=5, overlay_sic=False, un
     # now for the extras
     if overlay_sic:
         # read sea ice data file and lat-lons
-        fsic = SD('data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd), SDC.READ)
-        fgeo = SD('data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf', SDC.READ)
+        fsic = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
+        fgeo = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
 
         # AMSR2 Sea Ice Concentration
         sic = fsic.select('ASI Ice Concentration')[:]
@@ -367,24 +366,28 @@ def plot_flight_path(df_p3, df_g3=None, dx=20, dy=5, dt=5, overlay_sic=False, un
     if underlay_blue_marble is not None:
         for type in underlay_blue_marble:
             if 'WORLD' == type.upper(): # filename and image size is different for world
-                blue_marble_imgs[type.upper()] = plt.imread('data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month))
+                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
 
             else:
-                blue_marble_imgs[type.upper()] = plt.imread('data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper()))
+                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper())))
+
+    # save images in dirs with dates
+    outdir_with_date = os.path.join(outdir, ymd)
+    if not os.path.isdir(outdir_with_date):
+        os.makedirs(outdir_with_date)
 
     if parallel:
-        counts = np.arange(0, len(dt_idx_p3))
-        p_args = create_args_parallel(df_p3, df_g3, dt_idx_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, counts)
+        p_args = create_args_parallel(df_p3, df_g3, dt_idx_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir_with_date)
         pool = multiprocessing.Pool(processes=get_cpu_processes())
         pool.starmap(make_figures, p_args)
         pool.close()
 
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
-            make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, count)
+            make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir_with_date)
 
 
-def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, count):
+def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir):
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
@@ -393,6 +396,7 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
         _, i_g3 = get_closest_datetime(p3_time, df_g3)
 
     p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
+    fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
                   'Visualization by Vikas Nataraja'
@@ -431,14 +435,14 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
     # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
     ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20)
 
-    fname_out = 'data/viz_agu/test_{}.png'.format(count)
+    fname_out = os.path.join(outdir, fname_dt_str + '.png')
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
     print('Saved figure: ', fname_out)
     # plt.show()
     plt.close()
 
 
-def create_args_parallel(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, counts):
+def create_args_parallel(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir):
     arg_list = []
     for i in range(len(i_p3)):
         mini_list = []
@@ -454,7 +458,7 @@ def create_args_parallel(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, l
         mini_list.append(sic)
         mini_list.append(dx)
         mini_list.append(dy)
-        mini_list.append(counts[i])
+        mini_list.append(outdir)
 
         arg_list.append(mini_list)
 
@@ -485,11 +489,14 @@ if __name__ == '__main__':
     exec_start_dt = datetime.datetime.now() # to time the whole thing
     parser = argparse.ArgumentParser()
     parser.add_argument('--iwg_dir', default=None, type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
+    parser.add_argument('--outdir', default=None, type=str, help='Path to directory where the images will be written to')
     parser.add_argument('--date', default=None, type=str, help='Date for which data will be visualized')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
                         help='Pass --overlay_sic to overlay sea ice concentration from the day to the plot\n')
+    parser.add_argument('--underlay_blue_marble', action='store_true',
+                        help='Pass --underlay_blue_marble to underlay blue marble imagery\n')
     parser.add_argument('--dt', default=60, type=int, help='Sampling time interval in minutes i.e., plot every dt minutes.')
 
     args = parser.parse_args()
@@ -497,13 +504,21 @@ if __name__ == '__main__':
     flight_dt = datetime.datetime.strptime(args.date, '%Y%m%d')
     flight_dt_str = flight_dt.strftime('%Y%m%d')
 
-    p3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
-    g3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
+    if args.iwg_dir is not None:
+        p3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
+        g3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
+
+    else:
+        p3_iwg_file = os.path.join(parent_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
+        g3_iwg_file = os.path.join(parent_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
 
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
     df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
 
-    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+    if not os.path.isdir(args.outdir):
+        os.makedirs(args.outdir)
+
+    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = format_time(exec_total_time.total_seconds())
