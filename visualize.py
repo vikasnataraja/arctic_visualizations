@@ -1,4 +1,5 @@
 import os
+import argparse
 import pandas as pd
 import datetime
 import matplotlib
@@ -16,41 +17,27 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-import cmasher as cmr
-
 from pyhdf.SD import SD, SDC
 
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
-from matplotlib.collections import PatchCollection
 
-import matplotlib.font_manager as font_manager
-
+from util.plot_util import MPL_STYLE_PATH, sic_cmap
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# Add every font at the specified location
-parent_font_dir = '/Users/vikas/Downloads/myfonts/'
-font_dir = [os.path.join(parent_font_dir, f) for f in os.listdir(parent_font_dir) if os.path.isdir(os.path.join(parent_font_dir, f))]
 
-for font in font_manager.findSystemFonts(font_dir):
-    font_manager.fontManager.addfont(font)
+def get_cpu_processes():
 
-# Set font family globally
-# plt.rc('font',**{'family':'sans-serif','sans-serif':['Noto Sans']})
-plt.rc('font',**{'family':'sans-serif','sans-serif':['Libre Franklin']})
+    if (platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows'):
+        cores = int(multiprocessing.cpu_count()/4)
 
-base_cmap = cmr.arctic
-n_colors = 256
-dark_colors = 230
-dark = np.linspace(0.15, 0.9, dark_colors)
-bright = np.linspace(0.9, 1.0, n_colors - dark_colors)
-cmap_arr = np.hstack([dark, bright])
-sic_cmap = matplotlib.colors.ListedColormap(base_cmap(cmap_arr))
+    else:
+        cores = multiprocessing.cpu_count()
 
-mpl_style_path = '/Users/vikas/.matplotlib/current_whiteseaborn.mplstyle'
+    return cores
 
 
 def load_geotiff(filepath):
@@ -62,6 +49,7 @@ def load_geotiff(filepath):
     band3 = dset.read(3)
     land_tiff = np.stack([band1, band2, band3], axis=-1)
     dset.close()
+
     return land_tiff
 
 
@@ -386,13 +374,14 @@ def plot_flight_path(df_p3, df_g3=None, dx=20, dy=5, dt=5, overlay_sic=False, un
     if parallel:
         counts = np.arange(0, len(dt_idx_p3))
         p_args = create_args_parallel(df_p3, df_g3, dt_idx_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, counts)
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        pool = multiprocessing.Pool(processes=get_cpu_processes())
         pool.starmap(make_figures, p_args)
         pool.close()
 
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
             make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, count)
+            break
 
 
 
@@ -406,7 +395,7 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
 
     ####################################################################################
     fig = plt.figure(figsize=(20, 20))
-    plt.style.use(mpl_style_path)
+    plt.style.use(MPL_STYLE_PATH)
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
     add_ancillary(ax0, dx=dx, dy=dy, cartopy_black=True, coastline=True, land='natural', ocean=True, gridlines=False)
@@ -415,14 +404,14 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
     ax0.plot(df_p3['Longitude'][:i_p3], df_p3['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
     add_aircraft_graphic(ax0, img_p3, df_p3['True_Heading'][i_p3], df_p3['Longitude'][i_p3], df_p3['Latitude'][i_p3], ccrs_geog, zorder=4)
-    ax0.plot(df_p3['Longitude'][i_p3:], df_p3['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='white', alpha=0.25, zorder=4)
+    ax0.plot(df_p3['Longitude'][i_p3:], df_p3['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # now G-III if needed
     if df_g3 is not None:
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         ax0.plot(df_g3['Longitude'][:i_g3], df_g3['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
         add_aircraft_graphic(ax0, img_g3, df_g3['True_Hdg'][i_g3], df_g3['Longitude'][i_g3], df_g3['Latitude'][i_g3], ccrs_geog, zorder=4)
-        ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='white', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # plot blue marble images
     for key in blue_marble_imgs.keys():
@@ -478,11 +467,25 @@ blue_marble_info = {'WORLD': [-180, 180, -90, 90],
 
 
 ccrs_ortho = ccrs.Orthographic(central_longitude=-50, central_latitude=80)
-ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=700e3)
+ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=500e3)
 ccrs_geog = ccrs.PlateCarree()
 
 
 if __name__ == '__main__':
-    df_p3 = read_p3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/20240531/ARCSIX-MetNav_P3B_20240531_RA.ict', mts=False)
-    df_g3 = read_g3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/20240531/GIII-2024-05-31.txt', mts=True)
-    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, overlay_sic=True, underlay_blue_marble=None)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--date', default=None, type=str, help='Date for which data will be visualized')
+    parser.add_argument('--parallel', action='store_true',
+                        help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
+    parser.add_argument('--overlay_sic', action='store_true',
+                        help='Pass --overlay_sic to overlay sea ice concentration from the day to the plot\n')
+    parser.add_argument('--dt', default=60, type=int, help='Sampling time interval in minutes i.e., plot every dt minutes.')
+
+    args = parser.parse_args()
+
+    flight_dt = datetime.datetime.strptime(args.date, '%Y%m%d')
+    flight_dt_str = flight_dt.strftime('%Y%m%d')
+
+    df_p3 = read_p3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/{}/ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str, flight_dt_str), mts=False)
+    df_g3 = read_g3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/{}/GIII_{}.txt'.format(flight_dt_str, flight_dt_str), mts=True)
+    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
