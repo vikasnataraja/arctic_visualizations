@@ -19,15 +19,16 @@ import cmasher as cmr
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 # set matplotlib style
-if 'MPL_STYLE' in os.environ.keys():
-    MPL_STYLE_PATH = os.environ['MPL_STYLE']
+# if 'MPL_STYLE' in os.environ.keys():
+#     MPL_STYLE_PATH = os.environ['MPL_STYLE']
 
-elif 'MPL_STYLE_PATH' in os.environ.keys():
-    MPL_STYLE_PATH = os.environ['MPL_STYLE_PATH']
+# elif 'MPL_STYLE_PATH' in os.environ.keys():
+#     MPL_STYLE_PATH = os.environ['MPL_STYLE_PATH']
 
-else: # custom matplotlib stylesheet
-    MPL_STYLE_PATH = os.path.join(parent_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
+# else: # custom matplotlib stylesheet
+    # MPL_STYLE_PATH = os.path.join(parent_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
 
+MPL_STYLE_PATH = os.path.join(parent_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
 
 def set_plot_fonts(plt, serif_style='sans-serif', font='Libre Franklin'):
     """
