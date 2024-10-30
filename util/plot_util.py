@@ -49,8 +49,8 @@ def set_plot_fonts(plt, serif_style='sans-serif', font='Libre Franklin'):
     all_fonts_dir = os.path.join(parent_dir, 'util/plotting_utils/fonts/')
     font_dir = [os.path.join(all_fonts_dir, f) for f in all_fonts_dir if os.path.isdir(os.path.join(all_fonts_dir, f))]
     # add font if available from user's environment
-    if 'MPL_FONT_DIR' in os.environ.keys():
-        font_dir.append(os.environ['MPL_FONT_DIR'])
+    # if 'MPL_FONT_DIR' in os.environ.keys():
+    #     font_dir.append(os.environ['MPL_FONT_DIR'])
 
     # add all the fonts to matplotlib's library
     for font in font_manager.findSystemFonts(font_dir):
