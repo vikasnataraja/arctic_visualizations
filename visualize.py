@@ -381,8 +381,6 @@ def plot_flight_path(df_p3, df_g3=None, dx=20, dy=5, dt=5, overlay_sic=False, un
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
             make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, count)
-            break
-
 
 
 def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, count):
