@@ -391,6 +391,11 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
     if df_g3 is not None:
         _, i_g3 = get_closest_datetime(p3_time, df_g3)
 
+    p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
+    title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
+    credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
+                  'Visualization by Vikas Nataraja'
+
     ####################################################################################
     fig = plt.figure(figsize=(20, 20))
     plt.style.use(MPL_STYLE_PATH)
@@ -420,6 +425,11 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
         ax0.pcolormesh(lon, lat, sic, transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3)
 
     ax0.set_global()
+
+    # add credit text and title
+    ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
+    ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20)
+
     fname_out = 'data/viz_agu/test_{}.png'.format(count)
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
     print('Saved figure: ', fname_out)
