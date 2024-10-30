@@ -20,13 +20,13 @@ from pyhdf.SD import SD, SDC
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
-from util.plot_util import MPL_STYLE_PATH, sic_cmap
+from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-
+set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for plt
 
 
 def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land='topo', y_fontcolor='black'):
