@@ -23,6 +23,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
 from util.plot_util import MPL_STYLE_PATH, sic_cmap
+from util.util import format_time
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -481,6 +482,7 @@ ccrs_geog = ccrs.PlateCarree()
 
 if __name__ == '__main__':
 
+    exec_start_dt = datetime.datetime.now() # to time the whole thing
     parser = argparse.ArgumentParser()
     parser.add_argument('--iwg_dir', default=None, type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
     parser.add_argument('--date', default=None, type=str, help='Date for which data will be visualized')
@@ -502,3 +504,7 @@ if __name__ == '__main__':
     df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
 
     plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+    exec_stop_dt = datetime.datetime.now() # to time sdown
+    exec_total_time = exec_stop_dt - exec_start_dt
+    sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = format_time(exec_total_time.total_seconds())
+    print('\n\nTotal Execution Time: {}:{}:{}.{}\n\n'.format(sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs))
