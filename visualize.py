@@ -482,6 +482,7 @@ ccrs_geog = ccrs.PlateCarree()
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--iwg_dir', default=None, type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
     parser.add_argument('--date', default=None, type=str, help='Date for which data will be visualized')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
@@ -494,6 +495,10 @@ if __name__ == '__main__':
     flight_dt = datetime.datetime.strptime(args.date, '%Y%m%d')
     flight_dt_str = flight_dt.strftime('%Y%m%d')
 
-    df_p3 = read_p3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/{}/ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str, flight_dt_str), mts=False)
-    df_g3 = read_g3_iwg(fname='/Users/vikas/workspace/arctic/sif_sat/data/arcsix-field/{}/GIII_{}.txt'.format(flight_dt_str, flight_dt_str), mts=True)
+    p3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
+    g3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
+
+    df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
+    df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
     plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
