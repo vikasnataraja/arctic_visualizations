@@ -310,6 +310,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
+    print('{} time steps will be visualized'.format(dt_idx_p3.size))
 
     # use second index (not first in case there was an error) to use as reference date
     flight_path_dt = df_p3['datetime'][1].to_pydatetime()
@@ -491,7 +492,7 @@ if __name__ == '__main__':
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
 
-    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=50, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
