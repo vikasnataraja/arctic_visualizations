@@ -86,7 +86,11 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         gl.ypadding = 7.5
 
     for spine in ax.spines.values():
-        spine.set_edgecolor('black')
+        if cartopy_black:
+            spine.set_edgecolor('white')
+        else:
+            spine.set_edgecolor('black')
+
         spine.set_linewidth(1)
 
 
@@ -414,6 +418,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20)
 
     fname_out = os.path.join(outdir, fname_dt_str + '.png')
+    fig.set_facecolor('black') # for hyperwall
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
     print('Saved figure: ', fname_out)
     # plt.show()
