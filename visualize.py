@@ -503,7 +503,7 @@ if __name__ == '__main__':
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
 
-    plot_flight_path(df_p3, df_g3=df_g3, dx=20, dy=5, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+    plot_flight_path(df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
