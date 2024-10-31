@@ -296,7 +296,7 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
 
 
 
-def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dx=20, dy=5, dt=5):
+def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
 
     # p3 image graphic to be used as scatter marker
     img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
@@ -306,6 +306,9 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         # G-III image graphic to be used as scatter marker
         img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
         img_g3 = img_g3.resize((int(20*1.2), 20))
+
+    else:
+        img_g3 = None # to prevent errors
 
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
@@ -334,6 +337,9 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         fsic.end()
         fgeo.end()
 
+    else:
+        lon, lat, sic = None, None, None # to prevent errors during parallelization
+
     blue_marble_imgs = {}
     if underlay_blue_marble is not None:
         for type in underlay_blue_marble:
@@ -349,17 +355,17 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         os.makedirs(outdir_with_date)
 
     if parallel:
-        p_args = create_args_parallel(df_p3, df_g3, dt_idx_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir_with_date)
+        p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
         pool = multiprocessing.Pool(processes=viz_utils.get_cpu_processes())
         pool.starmap(make_figures, p_args)
         pool.close()
 
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
-            make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir_with_date)
+            make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
 
 
-def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir):
+def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
@@ -378,7 +384,7 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
     plt.style.use(MPL_STYLE_PATH)
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
-    add_ancillary(ax0, dx=dx, dy=dy, cartopy_black=True, coastline=True, land='natural', ocean=True, gridlines=False)
+    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land='natural', ocean=True, gridlines=False)
 
     # first P3
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
@@ -414,23 +420,21 @@ def make_figures(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat,
     plt.close()
 
 
-def create_args_parallel(df_p3, df_g3, i_p3, img_p3, img_g3, blue_marble_imgs, lon, lat, sic, dx, dy, outdir):
+def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
     arg_list = []
     for i in range(len(i_p3)):
         mini_list = []
 
+        mini_list.append(outdir)
         mini_list.append(df_p3)
-        mini_list.append(df_g3)
         mini_list.append(i_p3[i])
         mini_list.append(img_p3)
+        mini_list.append(df_g3)
         mini_list.append(img_g3)
         mini_list.append(blue_marble_imgs)
         mini_list.append(lon)
         mini_list.append(lat)
         mini_list.append(sic)
-        mini_list.append(dx)
-        mini_list.append(dy)
-        mini_list.append(outdir)
 
         arg_list.append(mini_list)
 
@@ -487,7 +491,14 @@ if __name__ == '__main__':
         g3_iwg_file = os.path.join(viz_utils.parent_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
 
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
-    df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+    # if G-III file exists, read it, else None
+    if os.path.isfile(g3_iwg_file):
+        df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+    else:
+        df_g3 = None
+        print('No G-III track found for {}'.format(args.date))
 
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
