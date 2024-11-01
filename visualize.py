@@ -517,12 +517,18 @@ if __name__ == '__main__':
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
 
     # if G-III file exists, read it, else None
-    if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
-        df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+    if args.date == '20240528': # transit for G-III, skip
+        df_g3 = None
+        print('No G-III track will be plotted for {} since it was a transit day'.format(args.date))
 
     else:
-        df_g3 = None
-        print('No G-III track found for {}'.format(args.date))
+        if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
+            df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+        else:
+            df_g3 = None
+            print('No G-III track found for {}'.format(args.date))
 
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
