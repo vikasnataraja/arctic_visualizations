@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 import pandas as pd
 import datetime
@@ -445,6 +446,31 @@ def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble
 
     return arg_list
 
+def get_filenames(args):
+
+    flight_dt = datetime.datetime.strptime(args.date, '%Y%m%d')
+    flight_dt_str = flight_dt.strftime('%Y%m%d')
+
+    if args.iwg_dir is not None:
+        flight_dir = os.path.join(args.iwg_dir, flight_dt_str)
+        p3_iwg_file, g3_iwg_file = None, None
+        for flight_file in os.listdir(flight_dir):
+            if ('ARCSIX-MetNav_P3B_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.ict')):
+                p3_iwg_file = os.path.join(flight_dir, flight_file)
+
+            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.ict')):
+                g3_iwg_file = os.path.join(flight_dir, flight_file)
+
+        if p3_iwg_file is None: # do not proceed
+            print('Could not find the P-3 MetNav IWG File. Exiting...')
+            sys.exit()
+
+        return p3_iwg_file, g3_iwg_file
+
+    else:
+        print('Must provide `--iwg_dir` to locate the P-3 MetNav IWG File inside the directory.')
+        sys.exit()
+
 # blue marble extent
 blue_marble_info = {'WORLD': [-180, 180, -90, 90],
 
@@ -484,21 +510,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    flight_dt = datetime.datetime.strptime(args.date, '%Y%m%d')
-    flight_dt_str = flight_dt.strftime('%Y%m%d')
 
-    if args.iwg_dir is not None:
-        p3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
-        g3_iwg_file = os.path.join(args.iwg_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
-
-    else:
-        p3_iwg_file = os.path.join(viz_utils.parent_dir, flight_dt_str, 'ARCSIX-MetNav_P3B_{}_RA.ict'.format(flight_dt_str))
-        g3_iwg_file = os.path.join(viz_utils.parent_dir, flight_dt_str, 'GIII_{}.txt'.format(flight_dt_str))
-
+    p3_iwg_file, g3_iwg_file = get_filenames(args)
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
 
     # if G-III file exists, read it, else None
-    if os.path.isfile(g3_iwg_file):
+    if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
         df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
 
     else:
