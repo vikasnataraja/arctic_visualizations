@@ -29,6 +29,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for plt
+plt.style.use(MPL_STYLE_PATH)
 
 
 def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land='topo', y_fontcolor='black'):
@@ -401,9 +402,8 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
                   'Visualization by Vikas Nataraja'
 
     ####################################################################################
-    print('Starting to create figure for {}'.format(p3_time_str))
+    # print('Starting to create figure for {}'.format(p3_time_str))
     fig = plt.figure(figsize=(20, 20))
-    plt.style.use(MPL_STYLE_PATH)
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
     add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land_mode, ocean=True, gridlines=False)
@@ -422,8 +422,8 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
         ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # plot blue marble images
-    for key in blue_marble_imgs.keys():
-        ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
+    # for key in blue_marble_imgs.keys():
+    #     ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
 
     # plot sea ice concentration
     if sic is not None:
