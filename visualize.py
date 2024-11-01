@@ -418,7 +418,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
 
     # add credit text and title
     # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
-    ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20)
+    ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20, color="white")
 
     fname_out = os.path.join(outdir, fname_dt_str + '.png')
     fig.set_facecolor('black') # for hyperwall
