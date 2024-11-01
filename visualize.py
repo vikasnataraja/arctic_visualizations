@@ -424,7 +424,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     fig.set_facecolor('black') # for hyperwall
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
 
-    plt.close()
+    plt.close(fig)
     print('Saved figure: ', fname_out)
 
     return 1
