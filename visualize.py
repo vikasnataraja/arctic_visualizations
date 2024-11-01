@@ -360,7 +360,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         multiprocessing.set_start_method('spawn')
         p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
 
-        with multiprocessing.Pool(processes=viz_utils.get_cpu_processes()) as pool:
+        n_cores = viz_utils.get_cpu_processes()
+        print('Message [plot_fkight_path]: Processing will be spread across {} cores'.format(n_cores))
+
+        with multiprocessing.Pool(processes=n_cores) as pool:
             pool.starmap(make_figures, p_args)
         # pool.close()
 
