@@ -309,18 +309,27 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
         img_g3 = img_g3.resize((int(20*1.2), 20))
 
+        g3_start_dt = df_g3['datetime'][1].to_pydatetime()
+        g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
+        g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
+
     else:
         img_g3 = None # to prevent errors
 
-
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
-    print('{} time steps will be visualized'.format(dt_idx_p3.size))
 
     # use second index (not first in case there was an error) to use as reference date
-    flight_path_dt = df_p3['datetime'][1].to_pydatetime()
-    ymd = flight_path_dt.strftime('%Y%m%d')
-    month = flight_path_dt.strftime('%m')
+    p3_start_dt = df_p3['datetime'][1].to_pydatetime()
+    p3_end_dt   = df_p3['datetime'][len(df_p3) - 1].to_pydatetime()
+    p3_flight_duration = viz_utils.format_time((p3_end_dt - p3_start_dt).total_seconds(), format='string')
+    ymd = p3_start_dt.strftime('%Y%m%d')
+    month = p3_start_dt.strftime('%m')
+
+    print('Message [plot_flight_path]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
+    print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
+
 
     # now for the extras
     if overlay_sic:
@@ -360,7 +369,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic) # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
-        print('Message [plot_fkight_path]: Processing will be spread across {} cores'.format(n_cores))
+        print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         with multiprocessing.Pool(processes=n_cores) as pool:
             pool.starmap(make_figures, p_args)
