@@ -6,21 +6,29 @@ import numpy as np
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
-def format_time(total_seconds):
+def format_time(total_seconds, format):
     """
     Convert seconds to hours, minutes, seconds, and milliseconds.
 
-    Parameters:
-    - total_seconds: The total number of seconds to convert.
+    Args:
+    ----
+        - total_seconds (int): The total number of seconds to convert.
+        - format (string): if 'string' then will be formatted to return a string,
+                           otherwise all the elements will be returned
 
     Returns:
-    - A tuple containing hours, minutes, seconds, and milliseconds.
+    -------
+        - A string or tuple containing hours, minutes, seconds, and milliseconds.
     """
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
     seconds = total_seconds % 60
     milliseconds = (total_seconds - int(total_seconds)) * 1000
 
+    if format == 'string':
+        return '{}:{}:{}.{}'.format(int(hours), int(minutes), int(seconds), int(milliseconds))
+
+    # otherwise return the whole thing
     return (int(hours), int(minutes), int(seconds), int(milliseconds))
 
 
