@@ -31,7 +31,7 @@ def get_cpu_processes():
         cores = int(multiprocessing.cpu_count()/4)
 
     else: # meant for supercomputers
-        cores = int(multiprocessing.cpu_count()/2)
+        cores = int(multiprocessing.cpu_count())
 
     return cores
 
@@ -61,4 +61,3 @@ def load_land_feature(type='natural'):
 
     else: #TODO
         print('Message [load_land_feature]: `type` must be one of hypso, topo, or natural')
-
