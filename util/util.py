@@ -26,11 +26,12 @@ def format_time(total_seconds):
 
 def get_cpu_processes():
 
+    # for local machines
     if (platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows'):
         cores = int(multiprocessing.cpu_count()/4)
 
-    else:
-        cores = multiprocessing.cpu_count()
+    else: # meant for supercomputers
+        cores = int(multiprocessing.cpu_count()/2)
 
     return cores
 
@@ -57,7 +58,7 @@ def load_land_feature(type='natural'):
     elif (type.lower() == 'topo') or (type.lower() == 'hypso'):
         land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
         return land_tiff_hypsometric
-    
+
     else: #TODO
         print('Message [load_land_feature]: `type` must be one of hypso, topo, or natural')
 
