@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 import datetime
 import matplotlib
+matplotlib.use('Agg')
 import multiprocessing
 import cartopy
 import numpy as np
@@ -56,16 +57,12 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
-
-        if land == 'topo' or land == 'hypso':
-            ax.imshow(land_tiff_hypsometric, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
-
-        # TODO: Find a better way to pre-load this to avoid re-loading at every call
-        elif land == 'natural':
-            ax.imshow(land_tiff_natural, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
-
-        else:
+        if isinstance(land, bool) and land: #land=True 
             ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
+
+        elif land.lower() in ['topo', 'natural', 'hypso']:
+            land_tiff = viz_utils.load_land_feature(land) 
+            ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
     if coastline:
         ax.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), zorder=2, edgecolor=colors['coastline'], linewidth=1, alpha=1)
@@ -385,6 +382,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
                   'Visualization by Vikas Nataraja'
 
     ####################################################################################
+    print('Starting to create figure for {}'.format(p3_time_str))
     fig = plt.figure(figsize=(20, 20))
     plt.style.use(MPL_STYLE_PATH)
     gs = GridSpec(1, 1, figure=fig)
@@ -489,9 +487,6 @@ blue_marble_info = {'WORLD': [-180, 180, -90, 90],
 ccrs_ortho = ccrs.Orthographic(central_longitude=-50, central_latitude=80)
 ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=500e3)
 ccrs_geog = ccrs.PlateCarree()
-
-# load in land
-land_tiff_hypsometric, land_tiff_natural = viz_utils.load_land_features()
 
 if __name__ == '__main__':
 

@@ -48,8 +48,16 @@ def load_geotiff(filepath):
     return land_tiff
 
 
-def load_land_features():
+def load_land_feature(type='natural'):
     # load into memory ~ 700mb each
-    land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
-    land_tiff_natural = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif'))
-    return land_tiff_hypsometric, land_tiff_natural
+    if type.lower() == 'natural':
+        land_tiff_natural = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif'))
+        return land_tiff_natural
+
+    elif (type.lower() == 'topo') or (type.lower() == 'hypso'):
+        land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
+        return land_tiff_hypsometric
+    
+    else: #TODO
+        print('Message [load_land_feature]: `type` must be one of hypso, topo, or natural')
+
