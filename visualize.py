@@ -357,10 +357,12 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         os.makedirs(outdir_with_date)
 
     if parallel:
+        multiprocessing.set_start_method('spawn')
         p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
-        pool = multiprocessing.Pool(processes=viz_utils.get_cpu_processes())
-        pool.starmap(make_figures, p_args)
-        pool.close()
+
+        with multiprocessing.Pool(processes=viz_utils.get_cpu_processes()) as pool:
+            pool.starmap(make_figures, p_args)
+        # pool.close()
 
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
