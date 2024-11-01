@@ -47,10 +47,10 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         ax.set_title(title, pad=7.5, fontsize=title_fontsize, fontweight="bold")
 
     if cartopy_black:
-        colors = {'ocean':'black', 'land':'black', 'coastline':'black'}
+        colors = {'ocean':'black', 'land':'black', 'coastline':'black', 'title':'white', 'background':'black'}
 
     else:
-        colors = {'ocean':'aliceblue', 'land':'#fcf4e8', 'coastline':'black'}
+        colors = {'ocean':'aliceblue', 'land':'#fcf4e8', 'coastline':'black', 'title':'black', 'background':'white'}
 
     if ocean:
         ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
@@ -79,7 +79,7 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         gl.yformatter = LatitudeFormatter()
         gl.xlocator = mticker.FixedLocator(np.arange(-180, 180, dx))
         gl.ylocator = mticker.FixedLocator(np.arange(0, 90, dy))
-        gl.xlabel_style = {'size': int(12 * scale), 'color': 'black'}
+        gl.xlabel_style = {'size': int(12 * scale), 'color': colors['title']}
         gl.ylabel_style = {'size': int(12 * scale), 'color': y_fontcolor}
         gl.rotate_labels = False
         gl.top_labels    = False
@@ -497,9 +497,9 @@ if __name__ == '__main__':
 
     exec_start_dt = datetime.datetime.now() # to time the whole thing
     parser = argparse.ArgumentParser()
-    parser.add_argument('--iwg_dir', default=None, type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
-    parser.add_argument('--outdir', default=None, type=str, help='Path to directory where the images will be written to')
-    parser.add_argument('--date', default=None, type=str, help='Date for which data will be visualized')
+    parser.add_argument('--iwg_dir', type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
+    parser.add_argument('--outdir',  type=str, help='Path to directory where the images will be written to')
+    parser.add_argument('--date',    type=str, help='Date for which data will be visualized')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
