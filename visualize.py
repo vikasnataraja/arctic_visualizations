@@ -57,11 +57,11 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
-        if isinstance(land, bool) and land: #land=True 
+        if isinstance(land, bool) and land: #land=True
             ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
 
         elif land.lower() in ['topo', 'natural', 'hypso']:
-            land_tiff = viz_utils.load_land_feature(land) 
+            land_tiff = viz_utils.load_land_feature(land)
             ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
 
     if coastline:
@@ -364,7 +364,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     else:
         for count, i_p3 in enumerate(dt_idx_p3):
-            make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
+            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
 
 
 def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
@@ -422,6 +422,8 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     print('Saved figure: ', fname_out)
     # plt.show()
     plt.close()
+
+    return 1
 
 
 def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
