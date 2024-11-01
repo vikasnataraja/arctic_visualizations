@@ -304,22 +304,6 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
 
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
 
-    # p3 image graphic to be used as scatter marker
-    img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
-    img_p3 = img_p3.resize((int(20*1.2), 20))
-
-    if df_g3 is not None:
-        # G-III image graphic to be used as scatter marker
-        img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
-        img_g3 = img_g3.resize((int(20*1.2), 20))
-
-        g3_start_dt = df_g3['datetime'][1].to_pydatetime()
-        g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
-        g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
-
-    else:
-        img_g3 = None # to prevent errors
-
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
 
@@ -330,10 +314,27 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     ymd = p3_start_dt.strftime('%Y%m%d')
     month = p3_start_dt.strftime('%m')
 
+    # report times
     print('Message [plot_flight_path]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
-    print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
-    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
+    # p3 image graphic to be used as scatter marker
+    img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
+    img_p3 = img_p3.resize((int(20*1.2), 20))
 
+    if df_g3 is not None:
+        # G-III image graphic to be used as scatter marker
+        img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
+        img_g3 = img_g3.resize((int(20*1.2), 20))
+
+        # report times
+        g3_start_dt = df_g3['datetime'][1].to_pydatetime()
+        g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
+        g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
+        print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+
+    else:
+        img_g3 = None # to prevent errors
+
+    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
 
     # now for the extras
     if overlay_sic:
