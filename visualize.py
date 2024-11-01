@@ -458,7 +458,7 @@ def get_filenames(args):
             if ('ARCSIX-MetNav_P3B_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.ict')):
                 p3_iwg_file = os.path.join(flight_dir, flight_file)
 
-            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.ict')):
+            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.txt')):
                 g3_iwg_file = os.path.join(flight_dir, flight_file)
 
         if p3_iwg_file is None: # do not proceed
