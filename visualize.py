@@ -57,12 +57,16 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
-        if isinstance(land, bool) and land: #land=True
+        if ((isinstance(land, bool)) and (land)) or (land.lower() == 'default'): #land=True or land = 'default'
             ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
 
-        elif land.lower() in ['topo', 'natural', 'hypso']:
+        elif (isinstance(land, str)) and (land.lower() in ['topo', 'natural', 'hypso']): # load and then show, made for parallel non-sharing
             land_tiff = viz_utils.load_land_feature(land)
             ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+
+        elif isinstance(land, np.ndarray): # show pre-loaded array, for serialized runs
+            ax.imshow(land, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+
 
     if coastline:
         ax.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), zorder=2, edgecolor=colors['coastline'], linewidth=1, alpha=1)
@@ -366,7 +370,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         os.makedirs(outdir_with_date)
 
     if parallel:
-        p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic) # create arguments for starmap
+        p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode='natural') # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
@@ -376,11 +380,12 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         # pool.close()
 
     else:
+        pre_loaded_land = viz_utils.load_land_feature(type='natural')
         for count, i_p3 in enumerate(dt_idx_p3):
-            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
+            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
 
-def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
+def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode):
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
@@ -400,7 +405,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     plt.style.use(MPL_STYLE_PATH)
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
-    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land='natural', ocean=True, gridlines=False)
+    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land_mode, ocean=True, gridlines=False)
 
     # first P3
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
@@ -439,7 +444,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     return 1
 
 
-def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
+def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode):
     arg_list = []
     for i in range(len(i_p3)):
         mini_list = []
@@ -454,6 +459,7 @@ def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble
         mini_list.append(lon)
         mini_list.append(lat)
         mini_list.append(sic)
+        mini_list.append(land_mode)
 
         arg_list.append(mini_list)
 
