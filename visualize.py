@@ -422,8 +422,9 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
         ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # plot blue marble images
-    # for key in blue_marble_imgs.keys():
-    #     ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
+    if len(blue_marble_imgs) > 0:
+        for key in blue_marble_imgs.keys():
+            ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
 
     # plot sea ice concentration
     if sic is not None:
