@@ -357,7 +357,6 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         os.makedirs(outdir_with_date)
 
     if parallel:
-        multiprocessing.set_start_method('spawn')
         p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
 
         n_cores = viz_utils.get_cpu_processes()
@@ -498,6 +497,7 @@ ccrs_geog = ccrs.PlateCarree()
 if __name__ == '__main__':
 
     exec_start_dt = datetime.datetime.now() # to time the whole thing
+    multiprocessing.set_start_method('fork')
     parser = argparse.ArgumentParser()
     parser.add_argument('--iwg_dir', type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
     parser.add_argument('--outdir',  type=str, help='Path to directory where the images will be written to')
