@@ -57,7 +57,7 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
-        if ((isinstance(land, bool)) and (land)) or (land.lower() == 'default'): #land=True or land = 'default'
+        if ((isinstance(land, bool)) and (land)) or ((isinstance(land, str)) and (land.lower() == 'default')): #land=True or land = 'default'
             ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
 
         elif (isinstance(land, str)) and (land.lower() in ['topo', 'natural', 'hypso']): # load and then show, made for parallel non-sharing
