@@ -4,6 +4,7 @@ import rasterio
 import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
@@ -105,3 +106,15 @@ def get_blue_marble_imagery(modes, month):
     else:
         print('Message [get_blue_marble_imagery]: Must provide a list.')
         return {}
+
+
+def load_aircraft_graphic(mode, width):
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        img = Image.open(os.path.join(parent_dir, 'data/assets/p3_red_transparent.png'))
+
+    else:
+        img = Image.open(os.path.join(parent_dir, 'data/assets/giii_blue_transparent.png'))
+
+    img = img.resize((int(width * 1.2), width)) # retain 1.2 aspect ratio
+    return img

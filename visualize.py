@@ -351,13 +351,11 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     # report times
     print('Message [plot_flight_path]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
     # p3 image graphic to be used as scatter marker
-    img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
-    img_p3 = img_p3.resize((int(20*1.2), 20))
+    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25)
 
     if df_g3 is not None:
         # G-III image graphic to be used as scatter marker
-        img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
-        img_g3 = img_g3.resize((int(20*1.2), 20))
+        img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20)
 
         # report times
         g3_start_dt = df_g3['datetime'][1].to_pydatetime()
@@ -394,7 +392,6 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
         with multiprocessing.Pool(processes=n_cores) as pool:
             pool.starmap(make_figures, p_args)
-        # pool.close()
 
     else:
         pre_loaded_land = viz_utils.load_land_feature(type='natural')
@@ -410,7 +407,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
-                  'Visualization by Vikas Nataraja'
+                  'Visualization by Vikas Nataraja/SSFR Team'
 
     ####################################################################################
     # print('Starting to create figure for {}'.format(p3_time_str))
