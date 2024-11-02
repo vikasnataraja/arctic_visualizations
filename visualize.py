@@ -8,8 +8,6 @@ matplotlib.use('Agg')
 import multiprocessing
 import cartopy
 import numpy as np
-import dask
-from dask.distributed import Client
 
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
@@ -267,6 +265,25 @@ def change_range(arr, min_value, max_value):
     return (arr - min_value) % (max_value - min_value) + min_value
 
 
+def get_sic(ymd):
+    # read sea ice data file and lat-lons
+    fsic = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
+    fgeo = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
+
+    # AMSR2 Sea Ice Concentration
+    sic = fsic.select('ASI Ice Concentration')[:]
+    lon = fgeo.select('Longitudes')[:]
+    lat = fgeo.select('Latitudes')[:]
+    # lon = change_range(lon, -180, 180) # change from 0-360 to -180 to 180
+
+    # mask nans and non-positive sic
+    sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
+    fsic.end()
+    fgeo.end()
+
+    return lon, lat, sic
+
+
 def get_time_indices(df, dt):
     # convert ns to s
     seconds = list(np.array((np.diff(df['datetime'])/1e9), dtype='int'))
@@ -346,19 +363,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     # now for the extras
     if overlay_sic:
         # read sea ice data file and lat-lons
-        fsic = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
-        fgeo = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
-
-        # AMSR2 Sea Ice Concentration
-        sic = fsic.select('ASI Ice Concentration')[:]
-        lon = fgeo.select('Longitudes')[:]
-        lat = fgeo.select('Latitudes')[:]
-        # lon = change_range(lon, -180, 180) # change from 0-360 to -180 to 180
-
-        # mask nans and non-positive sic
-        sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
-        fsic.end()
-        fgeo.end()
+        lon, lat, sic = get_sic(ymd)
 
     else:
         lon, lat, sic = None, None, None # to prevent errors during parallelization
@@ -383,18 +388,9 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
-        lazy_results = []
-        client = Client(n_workers=n_cores)
-        for count, i_p3 in enumerate(dt_idx_p3):
-            lazy_result = dask.delayed(make_figures)(p_args)
-            lazy_results.append(lazy_result)
-
-        futures = dask.persist(*lazy_results)  # trigger computation in the background
-        results = dask.compute(*futures)
-        print(results)
-
-        # with multiprocessing.Pool(processes=n_cores) as pool:
-        #     pool.starmap(make_figures, p_args)
+        with multiprocessing.Pool(processes=n_cores) as pool:
+            pool.starmap(make_figures, p_args)
+        # pool.close()
 
     else:
         pre_loaded_land = viz_utils.load_land_feature(type='natural')
