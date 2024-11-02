@@ -8,6 +8,8 @@ matplotlib.use('Agg')
 import multiprocessing
 import cartopy
 import numpy as np
+import dask
+from dask.distributed import Client
 
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
@@ -381,9 +383,18 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
-        with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, p_args)
-        # pool.close()
+        lazy_results = []
+        client = Client(n_workers=n_cores)
+        for count, i_p3 in enumerate(dt_idx_p3):
+            lazy_result = dask.delayed(make_figures)(p_args)
+            lazy_results.append(lazy_result)
+
+        futures = dask.persist(*lazy_results)  # trigger computation in the background
+        results = dask.compute(*futures)
+        print(results)
+
+        # with multiprocessing.Pool(processes=n_cores) as pool:
+        #     pool.starmap(make_figures, p_args)
 
     else:
         pre_loaded_land = viz_utils.load_land_feature(type='natural')
