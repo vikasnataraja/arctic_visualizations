@@ -301,9 +301,13 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
 
-
-
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
+
+    # only keep the columns we need since it is a large dataset
+    keep_p3_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
+    keep_g3_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
+    df_p3 = df_p3[keep_p3_cols]
+    df_g3 = df_g3[keep_g3_cols]
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
