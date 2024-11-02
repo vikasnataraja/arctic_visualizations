@@ -3,6 +3,7 @@ import platform
 import rasterio
 import multiprocessing
 import numpy as np
+import matplotlib.pyplot as plt
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
@@ -69,3 +70,38 @@ def load_land_feature(type='natural'):
 
     else: #TODO
         print('Message [load_land_feature]: `type` must be one of hypso, topo, or natural')
+
+
+# blue marble extent
+blue_marble_info = {'WORLD': [-180, 180, -90, 90],
+
+                    'A1': [-180, -90, 0, 90],
+                    'B1': [-90, 0, 0, 90],
+                    'C1': [0, 90, 0, 90],
+                    'D1': [90, 180, 0, 90],
+
+                    'A2': [-180, -90, -90, 0],
+                    'B2': [-90, 0, -90, 0],
+                    'C2': [0, 90, -90, 0],
+                    'D2': [90, 180, -90, 0],
+                   }
+
+def get_blue_marble_imagery(modes, month):
+
+    if isinstance(modes, list):
+
+        # change to same case
+        modes = [x.upper() for x in modes]
+        blue_marble_imgs = {}
+
+        for mode in modes:
+            if mode in blue_marble_info.keys():
+                if 'WORLD' == mode: # filename and image size is different for world
+                    blue_marble_imgs[mode.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
+
+                else:
+                    blue_marble_imgs[mode.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, mode.upper())))
+
+    else:
+        print('Message [get_blue_marble_imagery]: Must provide a list.')
+        return {}

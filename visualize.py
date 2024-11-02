@@ -368,14 +368,8 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     else:
         lon, lat, sic = None, None, None # to prevent errors during parallelization
 
-    blue_marble_imgs = {}
     if underlay_blue_marble is not None:
-        for type in underlay_blue_marble:
-            if 'WORLD' == type.upper(): # filename and image size is different for world
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
-
-            else:
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper())))
+        blue_marble_imgs = viz_utils.get_blue_marble_imagery(underlay_blue_marble, month)
 
     # save images in dirs with dates
     outdir_with_date = os.path.join(outdir, ymd)
@@ -435,7 +429,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     # plot blue marble images
     if len(blue_marble_imgs) > 0:
         for key in blue_marble_imgs.keys():
-            ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
+            ax0.imshow(blue_marble_imgs[key], extent=viz_utils.blue_marble_info[key], transform=ccrs_geog, zorder=3)
 
     # plot sea ice concentration
     if sic is not None:
@@ -503,20 +497,6 @@ def get_filenames(args):
         print('Must provide `--iwg_dir` to locate the P-3 MetNav IWG File inside the directory.')
         sys.exit()
 
-# blue marble extent
-blue_marble_info = {'WORLD': [-180, 180, -90, 90],
-
-                    'A1': [-180, -90, 0, 90],
-                    'B1': [-90, 0, 0, 90],
-                    'C1': [0, 90, 0, 90],
-                    'D1': [90, 180, 0, 90],
-
-                    'A2': [-180, -90, -90, 0],
-                    'B2': [-90, 0, -90, 0],
-                    'C2': [0, 90, -90, 0],
-                    'D2': [90, 180, -90, 0],
-                   }
-
 
 ccrs_ortho = ccrs.Orthographic(central_longitude=-50, central_latitude=80)
 ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=500e3)
@@ -534,8 +514,8 @@ if __name__ == '__main__':
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
                         help='Pass --overlay_sic to overlay sea ice concentration from the day to the plot\n')
-    parser.add_argument('--underlay_blue_marble', action='store_true',
-                        help='Pass --underlay_blue_marble to underlay blue marble imagery\n')
+    parser.add_argument('--underlay_blue_marble', default=None, type=str,
+                        help='Underlay blue marble imagery, one of `world`, `topo`\n')
     parser.add_argument('--dt', default=60, type=int, help='Sampling time interval in minutes i.e., plot every dt minutes.')
 
     args = parser.parse_args()
