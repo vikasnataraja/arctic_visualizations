@@ -308,6 +308,19 @@ def get_closest_datetime(dt, df_secondary):
     closest_dt_idx = df_secondary[df_secondary['datetime'] == closest_dt].index[0]
     return closest_dt, closest_dt_idx
 
+def minimize_df(df, mode):
+    """only keep the columns we need since it is a large dataset"""
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
+        if len(df) > 1e4:
+            df = df[::10] # reduces by a factor of 10
+    else:
+        keep_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
+
+    df = df[keep_cols]
+    return df
+
 
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # transform the coordinates to the target projection
@@ -322,11 +335,8 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
 
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
 
-    # only keep the columns we need since it is a large dataset
-    keep_p3_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
-    keep_g3_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
-    df_p3 = df_p3[keep_p3_cols]
-    df_g3 = df_g3[keep_g3_cols]
+    df_p3 = minimize_df(df_p3, 'P3')
+    df_g3 = minimize_df(df_g3, 'G3')
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
@@ -396,10 +406,6 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
-
-    if df_g3 is not None:
-        _, i_g3 = get_closest_datetime(p3_time, df_g3)
-
     p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
     fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
@@ -421,6 +427,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
 
     # now G-III if needed
     if df_g3 is not None:
+        _, i_g3 = get_closest_datetime(p3_time, df_g3)
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         ax0.plot(df_g3['Longitude'][:i_g3], df_g3['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
         add_aircraft_graphic(ax0, img_g3, df_g3['True_Hdg'][i_g3], df_g3['Longitude'][i_g3], df_g3['Latitude'][i_g3], ccrs_geog, zorder=4)
@@ -440,7 +447,6 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
     # add credit text and title
     # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
     ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20, color="white")
-
     fname_out = os.path.join(outdir, fname_dt_str + '.png')
     fig.set_facecolor('black') # for hyperwall
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
