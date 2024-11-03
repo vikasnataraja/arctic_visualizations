@@ -352,9 +352,9 @@ def create_dictionary(df, img, mode):
     for column in keep_cols:
         data[column] = df[column].values
 
-    # also add image
-    data['img'] = np.array(img).flatten()
-    data['img_shape'] = np.array(img).shape
+    # also add image (Pillow Image object)
+    data['img'] = img
+    # data['img_shape'] = np.array(img).shape
 
     return data
 
@@ -373,7 +373,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
-    print('Message [plot_flight_path]: P-3   = {} samples\nG-III = {} samples'.format(len(df_p3), len(df_g3)))
+    print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
@@ -448,7 +448,8 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land, ocean=True, gridlines=False)
 
     # first P3
-    img_p3 = p3_data['img'].reshape(p3_data['img_shape'])
+    # img_p3 = p3_data['img'].reshape(p3_data['img_shape'])
+    img_p3 = p3_data['img']
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
     ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
     add_aircraft_graphic(ax0, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=4)
@@ -457,7 +458,8 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     # now G-III if needed
     if len(g3_data) > 0:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
-        img_g3 = g3_data['img'].reshape(g3_data['img_shape'])
+        # img_g3 = g3_data['img'].reshape(g3_data['img_shape'])
+        img_g3 = g3_data['img']
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
         add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=4)
