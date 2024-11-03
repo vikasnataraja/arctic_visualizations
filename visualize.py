@@ -397,29 +397,32 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     ############### start execution ###############
     if parallel:
-        # p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode) # create arguments for starmap
+        df_p3 = xr.Dataset.from_dataframe(df_p3)
+        df_g3 = xr.Dataset.from_dataframe(df_g3)
+
+        p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode=land_mode, ymd=ymd) # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
-        # with multiprocessing.Pool(processes=n_cores) as pool:
-        #     pool.starmap(make_figures, p_args)
+
+        with multiprocessing.Pool(processes=n_cores) as pool:
+            pool.starmap(make_figures, p_args)
 
         # make pandas df to dask df for faster, embarrassingly parallel execution
         # df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
         # df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
-        df_p3 = xr.Dataset.from_dataframe(df_p3)
-        df_g3 = xr.Dataset.from_dataframe(df_g3)
+
 
         # set dask params
-        client = Client(n_workers=n_cores)
+        # client = Client(n_workers=n_cores)
 
-        lazy_results = []
-        for count, i_p3 in enumerate(dt_idx_p3):
-            result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd)
-            lazy_results.append(result)
+        # lazy_results = []
+        # for count, i_p3 in enumerate(dt_idx_p3):
+        #     result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd)
+        #     lazy_results.append(result)
 
-        futures = dask.persist(*lazy_results)  # trigger computation in the background
-        results = dask.compute(*futures)
+        # futures = dask.persist(*lazy_results)  # trigger computation in the background
+        # results = dask.compute(*futures)
 
 
     # else: # serially
@@ -485,7 +488,7 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, o
     return 1
 
 
-def create_args_starmap(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode):
+def create_args_starmap(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd):
     arg_list = []
     for i in range(len(i_p3)):
         mini_list = []
@@ -497,10 +500,9 @@ def create_args_starmap(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_
         mini_list.append(df_g3)
         mini_list.append(img_g3)
         mini_list.append(blue_marble_imgs)
-        mini_list.append(lon)
-        mini_list.append(lat)
-        mini_list.append(sic)
+        mini_list.append(overlay_sic)
         mini_list.append(land_mode)
+        mini_list.append(ymd)
 
         arg_list.append(mini_list)
 
