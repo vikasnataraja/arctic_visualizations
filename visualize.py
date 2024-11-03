@@ -404,11 +404,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
         sic_data['sic'] = sic
 
     ############### start execution ###############
+    p3_data = create_dictionary(df_p3, img_p3, 'P3')
+    g3_data = create_dictionary(df_g3, img_g3, 'G3')
+
     if parallel:
-
-        p3_data = create_dictionary(df_p3, img_p3, 'P3')
-        g3_data = create_dictionary(df_g3, img_g3, 'G3')
-
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
