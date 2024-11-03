@@ -349,6 +349,16 @@ def create_dask_dataframe(df, mode, ymd):
     dask_dataframe = dd.read_csv(csv_fname) # read in as dask
     return dask_dataframe
 
+def np_to_python_datetime(date):
+    """
+    Converts a numpy datetime64 object to a python datetime object
+    Input:
+      date - a np.datetime64 object
+    Output:
+      date - a python datetime object
+    """
+    timestamp = ((date - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's'))
+    return datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
 
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # transform the coordinates to the target projection
@@ -435,8 +445,19 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, o
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
-    p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
-    fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
+
+    if isinstance(df_p3, pd.DataFrame):
+        p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
+        fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
+
+    elif isinstance(df_p3, xr.Dataset):
+        p3_time_str = np_to_python_datetime(p3_time.values).strftime('%d %B, %Y at %H:%MZ')
+        fname_dt_str = np_to_python_datetime(p3_time.values).strftime('%Y%m%d_%H%MZ') # for image filename
+
+    else:
+        p3_time_str = ''
+        fname_dt_str = ''
+
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
                   'Visualization by Vikas Nataraja/SSFR Team'
