@@ -61,16 +61,17 @@ def load_geotiff(filepath):
 
 def load_land_feature(type='natural'):
     # load into memory ~ 700mb each
-    if type.lower() == 'natural':
+    if (type is not None) and (type.lower() == 'natural'):
         land_tiff_natural = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief/NE1_HR_LC_SR.tif'))
         return land_tiff_natural
 
-    elif (type.lower() == 'topo') or (type.lower() == 'hypso'):
+    elif (type is not None) and ((type.lower() == 'topo') or (type.lower() == 'hypso')):
         land_tiff_hypsometric = load_geotiff(os.path.join(parent_dir, 'data/shapefiles/natural_earth_data/10m_natural_earth_relief_hypsometric/HYP_HR_SR.tif'))
         return land_tiff_hypsometric
 
-    else: #TODO
+    else:
         print('Message [load_land_feature]: `type` must be one of hypso, topo, or natural')
+        return None
 
 
 # blue marble extent

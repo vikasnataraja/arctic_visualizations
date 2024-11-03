@@ -32,7 +32,7 @@ set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for
 plt.style.use(MPL_STYLE_PATH)
 
 
-def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land='topo', y_fontcolor='black'):
+def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land=None, y_fontcolor='black'):
     """
     Adds ancillary features to the axis.
     """
@@ -392,10 +392,14 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     ############### TODO: Not optimized for parallelization! ###############
     if underlay_blue_marble is not None:
         blue_marble_imgs = viz_utils.load_blue_marble_imagery(underlay_blue_marble, month)
+        land_mode = None
+
+    else: # use other land features instead
+        land_mode = 'natural'
 
     ############### start execution ###############
     if parallel:
-        p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode='natural') # create arguments for starmap
+        p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode) # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
@@ -403,7 +407,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
             pool.starmap(make_figures, p_args)
 
     else: # serially
-        pre_loaded_land = viz_utils.load_land_feature(type='natural') # for serial processing, pre load land feature
+        pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
         for count, i_p3 in enumerate(dt_idx_p3):
             _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
