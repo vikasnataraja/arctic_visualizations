@@ -308,6 +308,27 @@ def get_closest_datetime(dt, df_secondary):
     closest_dt_idx = df_secondary[df_secondary['datetime'] == closest_dt].index[0]
     return closest_dt, closest_dt_idx
 
+
+def report_p3_dates(df_p3):
+    # use second index (not first in case there was a misread header) to use as reference date
+    p3_start_dt = df_p3['datetime'][1].to_pydatetime()
+    p3_end_dt   = df_p3['datetime'][len(df_p3) - 1].to_pydatetime()
+    p3_flight_duration = viz_utils.format_time((p3_end_dt - p3_start_dt).total_seconds(), format='string')
+    ymd = p3_start_dt.strftime('%Y%m%d')
+    month = p3_start_dt.strftime('%m')
+    # report times
+    print('Message [report_p3_dates]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
+
+    return ymd, month
+
+def report_g3_dates(df_g3):
+    # report times
+    g3_start_dt = df_g3['datetime'][1].to_pydatetime()
+    g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
+    g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
+    print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+
+
 def minimize_df(df, mode):
     """only keep the columns we need since it is a large dataset"""
 
@@ -339,36 +360,28 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     df_g3 = minimize_df(df_g3, 'G3')
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
-    # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
+    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
 
-    # use second index (not first in case there was an error) to use as reference date
-    p3_start_dt = df_p3['datetime'][1].to_pydatetime()
-    p3_end_dt   = df_p3['datetime'][len(df_p3) - 1].to_pydatetime()
-    p3_flight_duration = viz_utils.format_time((p3_end_dt - p3_start_dt).total_seconds(), format='string')
-    ymd = p3_start_dt.strftime('%Y%m%d')
-    month = p3_start_dt.strftime('%m')
+    # print a report and get dates
+    ymd, month = report_p3_dates(df_p3)
 
-    # report times
-    print('Message [plot_flight_path]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
-    # p3 image graphic to be used as scatter marker
-    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25)
+    # save images in dirs with dates
+    outdir_with_date = os.path.join(outdir, ymd)
+    if not os.path.isdir(outdir_with_date):
+        os.makedirs(outdir_with_date)
+
+    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25) # p3 image graphic to be used as scatter marker
 
     if df_g3 is not None:
         # G-III image graphic to be used as scatter marker
         img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20)
-
-        # report times
-        g3_start_dt = df_g3['datetime'][1].to_pydatetime()
-        g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
-        g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
-        print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+        report_g3_dates(df_g3)
 
     else:
         img_g3 = None # to prevent errors
 
-    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
-
     # now for the extras
+    ############### add sea ice concentration ###############
     if overlay_sic:
         # read sea ice data file and lat-lons
         lon, lat, sic = get_sic(ymd)
@@ -376,25 +389,22 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     else:
         lon, lat, sic = None, None, None # to prevent errors during parallelization
 
+    ############### load blue marble imagery into a dictionary ###############
+    ############### TODO: Not optimized for parallelization! ###############
     if underlay_blue_marble is not None:
-        blue_marble_imgs = viz_utils.get_blue_marble_imagery(underlay_blue_marble, month)
+        blue_marble_imgs = viz_utils.load_blue_marble_imagery(underlay_blue_marble, month)
 
-    # save images in dirs with dates
-    outdir_with_date = os.path.join(outdir, ymd)
-    if not os.path.isdir(outdir_with_date):
-        os.makedirs(outdir_with_date)
-
+    ############### start execution ###############
     if parallel:
         p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode='natural') # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
-
         with multiprocessing.Pool(processes=n_cores) as pool:
             pool.starmap(make_figures, p_args)
 
-    else:
-        pre_loaded_land = viz_utils.load_land_feature(type='natural')
+    else: # serially
+        pre_loaded_land = viz_utils.load_land_feature(type='natural') # for serial processing, pre load land feature
         for count, i_p3 in enumerate(dt_idx_p3):
             _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
