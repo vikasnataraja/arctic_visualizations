@@ -405,7 +405,6 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
     ############### start execution ###############
     if parallel:
 
-        # p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode=land_mode, ymd=ymd) # create arguments for starmap
         p3_data = create_dictionary(df_p3, img_p3, 'P3')
         g3_data = create_dictionary(df_g3, img_g3, 'G3')
 
@@ -415,10 +414,9 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
         with multiprocessing.Pool(processes=n_cores) as pool:
             pool.starmap(make_figures, [[outdir, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
-    # else: # serially
-    #     pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
-    #     for count, i_p3 in enumerate(dt_idx_p3):
-    #         _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
+    else: # serially
+        for count, i_p3 in enumerate(dt_idx_p3):
+            _ = make_figures(outdir, p3_data, g3_data, i_p3, sic_data)
 
 
 def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
@@ -488,26 +486,6 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
 
     return 1
 
-
-def create_args_starmap(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd):
-    arg_list = []
-    for i in range(len(i_p3)):
-        mini_list = []
-
-        mini_list.append(outdir)
-        mini_list.append(df_p3)
-        mini_list.append(i_p3[i])
-        mini_list.append(img_p3)
-        mini_list.append(df_g3)
-        mini_list.append(img_g3)
-        mini_list.append(blue_marble_imgs)
-        mini_list.append(overlay_sic)
-        mini_list.append(land_mode)
-        mini_list.append(ymd)
-
-        arg_list.append(mini_list)
-
-    return arg_list
 
 def get_filenames(args):
 
