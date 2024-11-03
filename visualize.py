@@ -338,9 +338,11 @@ def np_to_python_datetime(date):
     py_date   = py_date.replace(tzinfo=None) # so that timedelta does not raise an error
     return py_date
 
-def create_dictionary(mp_dict, df, img, mode):
+def create_dictionary(df, img, mode):
+
+    data = {}
     if df is None:
-        return mp_dict
+        return data
 
     if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
         keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
@@ -348,13 +350,13 @@ def create_dictionary(mp_dict, df, img, mode):
         keep_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
 
     for column in keep_cols:
-        mp_dict[column] = df[column].values
+        data[column] = df[column].values
 
     # also add image
-    mp_dict['img'] = np.array(img).flatten()
-    mp_dict['img_shape'] = np.array(img).shape
+    data['img'] = np.array(img).flatten()
+    data['img_shape'] = np.array(img).shape
 
-    return mp_dict
+    return data
 
 
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
@@ -367,9 +369,7 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # create the AnnotationBbox
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
-def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt):
-
-    multi_manager = multiprocessing.Manager()
+def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
@@ -394,21 +394,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     else:
         img_g3 = None # to prevent errors
 
-    ############### load blue marble imagery into a dictionary ###############
-    ############### TODO: Not optimized for parallelization! ###############
-    if underlay_blue_marble is not None:
-        blue_marble_imgs = multi_manager.dict()
-        blue_marble_imgs = viz_utils.load_blue_marble_imagery(blue_marble_imgs, underlay_blue_marble, month)
-        land = None
-
-    else: # use other land features instead
-        blue_marble_imgs = {}
-        land = multi_manager.Array('d', viz_utils.load_land_feature(type='natural').tolist())
-
     if overlay_sic:
         # read sea ice data file and lat-lons in delayed fashion
+        sic_data = {}
         lon, lat, sic = viz_utils.load_sic(ymd)
-        sic_data = multi_manager.dict()
         sic_data['lon'] = lon
         sic_data['lat'] = lat
         sic_data['sic'] = sic
@@ -417,16 +406,14 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     if parallel:
 
         # p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode=land_mode, ymd=ymd) # create arguments for starmap
-        p3_data = multi_manager.dict()
-        g3_data = multi_manager.dict()
-        p3_data = create_dictionary(p3_data, df_p3, img_p3, 'P3')
-        g3_data = create_dictionary(g3_data, df_g3, img_g3, 'G3')
+        p3_data = create_dictionary(df_p3, img_p3, 'P3')
+        g3_data = create_dictionary(df_g3, img_g3, 'G3')
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, [[outdir, p3_data, g3_data, i_p3, blue_marble_imgs, sic_data, land] for i_p3 in dt_idx_p3])
+            pool.starmap(make_figures, [[outdir, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
     # else: # serially
     #     pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
@@ -434,7 +421,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     #         _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
 
-def make_figures(outdir, p3_data, g3_data, i_p3, blue_marble_imgs, sic_data, land):
+def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     """ Parallelized """
 
     p3_time = p3_data['datetime'][i_p3]
@@ -591,7 +578,20 @@ if __name__ == '__main__':
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
 
-    plot_flight_path(df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+
+    ############### load blue marble imagery into a dictionary ###############
+    # print a report and get dates
+    ymd, month = report_p3_dates(df_p3)
+
+    if args.underlay_blue_marble is not None:
+        blue_marble_imgs = viz_utils.load_blue_marble_imagery(args.underlay_blue_marble, month)
+        land = None
+
+    else: # use other land features instead
+        blue_marble_imgs = {}
+        land = viz_utils.load_land_feature(type='natural')
+
+    plot_flight_path(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
