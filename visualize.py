@@ -403,7 +403,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     else: # use other land features instead
         blue_marble_imgs = {}
-        land = multi_manager.Array('d', viz_utils.load_land_feature(type='natural').list())
+        land = multi_manager.Array('d', viz_utils.load_land_feature(type='natural').tolist())
 
     if overlay_sic:
         # read sea ice data file and lat-lons in delayed fashion
