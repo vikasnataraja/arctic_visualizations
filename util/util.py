@@ -87,7 +87,7 @@ blue_marble_info = {'WORLD': [-180, 180, -90, 90],
                     'D2': [90, 180, -90, 0],
                    }
 
-def get_blue_marble_imagery(modes, month):
+def load_blue_marble_imagery(modes, month):
 
     if isinstance(modes, list):
 
