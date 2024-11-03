@@ -354,7 +354,7 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
 
-def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
+def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
@@ -370,11 +370,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     if not os.path.isdir(outdir_with_date):
         os.makedirs(outdir_with_date)
 
-    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25) # p3 image graphic to be used as scatter marker
+    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25) # P-3 image graphic to be used as scatter marker
 
     if df_g3 is not None:
-        # G-III image graphic to be used as scatter marker
-        img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20)
+        img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20) # G-III image graphic to be used as scatter marker
         report_g3_dates(df_g3)
 
     else:
