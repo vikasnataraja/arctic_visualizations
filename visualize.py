@@ -400,13 +400,6 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
         # with multiprocessing.Pool(processes=n_cores) as pool:
         #     pool.starmap(make_figures, p_args)
-        ############### add sea ice concentration ###############
-        if overlay_sic:
-            # read sea ice data file and lat-lons in delayed fashion
-            lon, lat, sic = dask.delayed(viz_utils.load_sic)(ymd)
-
-        else:
-            lon, lat, sic = None, None, None # to prevent errors during parallelization
 
         # make pandas df to dask df for faster, embarrassingly parallel execution
         df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
@@ -417,20 +410,20 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
         lazy_results = []
         for count, i_p3 in enumerate(dt_idx_p3):
-            result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode)
+            result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd)
             lazy_results.append(result)
 
         futures = dask.persist(*lazy_results)  # trigger computation in the background
         results = dask.compute(*futures)
 
 
-    else: # serially
-        pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
-        for count, i_p3 in enumerate(dt_idx_p3):
-            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
+    # else: # serially
+    #     pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
+    #     for count, i_p3 in enumerate(dt_idx_p3):
+    #         _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
 
-def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode):
+def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd):
     """ Parallelized """
 
     p3_time = df_p3['datetime'][i_p3]
@@ -467,7 +460,9 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, l
             ax0.imshow(blue_marble_imgs[key], extent=viz_utils.blue_marble_info[key], transform=ccrs_geog, zorder=3)
 
     # plot sea ice concentration
-    if sic is not None:
+    if overlay_sic:
+        # read sea ice data file and lat-lons in delayed fashion
+        lon, lat, sic = viz_utils.load_sic(ymd)
         ax0.pcolormesh(lon, lat, sic, transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3)
 
     ax0.set_global()
