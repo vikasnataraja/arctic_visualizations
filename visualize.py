@@ -281,9 +281,17 @@ def get_time_indices(df, dt):
 
 
 def get_closest_datetime(dt, df_secondary):
+
     dt_list = list(df_secondary['datetime'])
+    sample_time = dt_list[0]
+    if isinstance(sample_time, pd.Timestamp):
+        dt_list = [i.to_pydatetime() for i in dt_list]
+
+    elif isinstance(sample_time, np.datetime64):
+        dt_list = [np_to_python_datetime(i) for i in dt_list]
+
     closest_dt = min(dt_list, key=lambda d: abs(d - dt))
-    closest_dt_idx = df_secondary[df_secondary['datetime'] == closest_dt].index[0]
+    closest_dt_idx = dt_list.index(closest_dt)
     return closest_dt, closest_dt_idx
 
 
@@ -425,16 +433,13 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     p3_time = p3_data['datetime'][i_p3]
 
     if isinstance(p3_time, pd.Timestamp):
-        p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
-        fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
+        p3_time = p3_time.to_pydatetime()
 
     elif isinstance(p3_time, np.datetime64):
-        p3_time_str = np_to_python_datetime(p3_time).strftime('%d %B, %Y at %H:%MZ')
-        fname_dt_str = np_to_python_datetime(p3_time).strftime('%Y%m%d_%H%MZ') # for image filename
+        p3_time = np_to_python_datetime(p3_time)
 
-    else:
-        p3_time_str = ''
-        fname_dt_str = ''
+    p3_time_str = np_to_python_datetime(p3_time).strftime('%d %B, %Y at %H:%MZ')
+    fname_dt_str = np_to_python_datetime(p3_time).strftime('%Y%m%d_%H%MZ') # for image filename
 
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
