@@ -342,7 +342,7 @@ def create_dask_dataframe(df, mode, ymd):
     else:
         csv_fname = os.path.join(csv_dir, 'g3_{}.csv'.format(ymd))
 
-    df.to_csv(csv_fname) # might need to add index=False
+    df.to_csv(csv_fname, encoding='utf-8', index=False) # save to csv with utf8 encoding for dask
 
     dask_dataframe = dd.read_csv(csv_fname) # read in as dask
     return dask_dataframe
