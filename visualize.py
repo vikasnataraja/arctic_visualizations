@@ -23,6 +23,8 @@ import dask
 import dask.dataframe as dd
 from dask.distributed import Client
 
+import xarray as xr
+
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
@@ -403,8 +405,10 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         #     pool.starmap(make_figures, p_args)
 
         # make pandas df to dask df for faster, embarrassingly parallel execution
-        df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
-        df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
+        # df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
+        # df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
+        df_p3 = xr.Dataset.from_dataframe(df_p3)
+        df_g3 = xr.Dataset.from_dataframe(df_g3)
 
         # set dask params
         client = Client(n_workers=n_cores)
