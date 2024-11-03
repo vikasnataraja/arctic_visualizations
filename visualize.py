@@ -293,8 +293,8 @@ def get_closest_datetime(dt, df_secondary):
 
 def report_p3_dates(df_p3):
     # use second index (not first in case there was a misread header) to use as reference date
-    p3_start_dt = df_p3['datetime'][1].to_pydatetime()
-    p3_end_dt   = df_p3['datetime'][len(df_p3) - 1].to_pydatetime()
+    p3_start_dt = df_p3['datetime'].iloc[1].to_pydatetime()
+    p3_end_dt   = df_p3['datetime'].iloc[len(df_p3) - 1].to_pydatetime()
     p3_flight_duration = viz_utils.format_time((p3_end_dt - p3_start_dt).total_seconds(), format='string')
     ymd = p3_start_dt.strftime('%Y%m%d')
     month = p3_start_dt.strftime('%m')
@@ -306,8 +306,8 @@ def report_p3_dates(df_p3):
 
 def report_g3_dates(df_g3):
     # report times
-    g3_start_dt = df_g3['datetime'][1].to_pydatetime()
-    g3_end_dt   = df_g3['datetime'][len(df_g3) - 1].to_pydatetime()
+    g3_start_dt = df_g3['datetime'].iloc[1].to_pydatetime()
+    g3_end_dt   = df_g3['datetime'].iloc[len(df_g3) - 1].to_pydatetime()
     g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
     print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
 
