@@ -352,8 +352,8 @@ def create_dictionary(df, img, mode):
         data[column] = df[column].values
 
     # also add image
-    data['img'] = img.flatten()
-    data['img_shape'] = img.shape
+    data['img'] = np.array(img).flatten()
+    data['img_shape'] = np.array(img).shape
 
     return data
 
