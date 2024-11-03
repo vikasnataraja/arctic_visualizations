@@ -438,8 +438,8 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     elif isinstance(p3_time, np.datetime64):
         p3_time = np_to_python_datetime(p3_time)
 
-    p3_time_str = np_to_python_datetime(p3_time).strftime('%d %B, %Y at %H:%MZ')
-    fname_dt_str = np_to_python_datetime(p3_time).strftime('%Y%m%d_%H%MZ') # for image filename
+    p3_time_str = p3_time.strftime('%d %B, %Y at %H:%MZ')
+    fname_dt_str = p3_time.strftime('%Y%m%d_%H%MZ') # for image filename
 
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
