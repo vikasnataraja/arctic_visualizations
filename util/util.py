@@ -107,8 +107,9 @@ blue_marble_info = {'WORLD': [-180, 180, -90, 90],
                     'D2': [90, 180, -90, 0],
                    }
 
-def load_blue_marble_imagery(mp_dict, modes, month):
+def load_blue_marble_imagery(modes, month):
 
+    blue_marble_imgs = {}
     if isinstance(modes, list):
 
         # change to same case
@@ -117,15 +118,15 @@ def load_blue_marble_imagery(mp_dict, modes, month):
         for mode in modes:
             if mode in blue_marble_info.keys():
                 if 'WORLD' == mode: # filename and image size is different for world
-                    mp_dict[mode.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
+                    blue_marble_imgs[mode.upper()] = Image.open(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
 
                 else:
-                    mp_dict[mode.upper()] = plt.imread(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, mode.upper())))
+                    blue_marble_imgs[mode.upper()] = Image.open(os.path.join(parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, mode.upper())))
 
     else:
-        print('Message [get_blue_marble_imagery]: Must provide a list. No action performed')
+        print('Message [get_blue_marble_imagery]: Must provide a list of `modes`. No action taken, returning an empty dictionary.')
 
-    return mp_dict
+    return blue_marble_imgs
 
 
 def load_aircraft_graphic(mode, width):
