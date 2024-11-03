@@ -19,12 +19,6 @@ from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
-import dask
-import dask.dataframe as dd
-from dask.distributed import Client
-
-import xarray as xr
-
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
@@ -317,6 +311,9 @@ def report_g3_dates(df_g3):
 def minimize_df(df, mode):
     """only keep the columns we need since it is a large dataset"""
 
+    if df is None:
+        return None
+
     if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
         keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
         if len(df) > 1e4:
@@ -328,27 +325,6 @@ def minimize_df(df, mode):
     return df
 
 
-def create_dask_dataframe(df, mode, ymd):
-    """
-    Convert pandas DataFrame to dask DataFrame.
-    We don't use dask.dataframe.from_pandas which tends to require specific formatting.
-    Instead, we simply save pandas df to a csv, then use dask to read it.
-    """
-    csv_dir = os.path.join(viz_utils.parent_dir, 'tmp_data/') # create csv_dir if it doesn't exist
-    if not os.path.isdir(csv_dir):
-        os.makedirs(csv_dir)
-
-    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
-        csv_fname = os.path.join(csv_dir, 'p3_{}.csv'.format(ymd))
-
-    else:
-        csv_fname = os.path.join(csv_dir, 'g3_{}.csv'.format(ymd))
-
-    df.to_csv(csv_fname, encoding='utf-8', index=False) # save to csv with utf8 encoding for dask
-
-    dask_dataframe = dd.read_csv(csv_fname) # read in as dask
-    return dask_dataframe
-
 def np_to_python_datetime(date):
     """
     Converts a numpy datetime64 object to a python datetime object
@@ -358,7 +334,29 @@ def np_to_python_datetime(date):
       date - a python datetime object
     """
     timestamp = ((date - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's'))
-    return datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    py_date   = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    py_date   = py_date.replace(tzinfo=None) # so that timedelta does not raise an error
+    return py_date
+
+def create_dictionary(df, img, mode):
+    if df is None:
+        return {}
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
+    else:
+        keep_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
+
+    data = {}
+    for column in keep_cols:
+        data[column] = df[column].values
+
+    # also add image
+    data['img'] = img.flatten()
+    data['img_shape'] = img.shape
+
+    return data
+
 
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # transform the coordinates to the target projection
@@ -407,32 +405,16 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     ############### start execution ###############
     if parallel:
-        df_p3 = xr.Dataset.from_dataframe(df_p3)
-        df_g3 = xr.Dataset.from_dataframe(df_g3)
 
-        p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode=land_mode, ymd=ymd) # create arguments for starmap
+        # p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode=land_mode, ymd=ymd) # create arguments for starmap
+        p3_data = create_dictionary(df_p3, img_p3, 'P3')
+        g3_data = create_dictionary(df_g3, img_g3, 'G3')
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, p_args)
-
-        # make pandas df to dask df for faster, embarrassingly parallel execution
-        # df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
-        # df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
-
-
-        # set dask params
-        # client = Client(n_workers=n_cores)
-
-        # lazy_results = []
-        # for count, i_p3 in enumerate(dt_idx_p3):
-        #     result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd)
-        #     lazy_results.append(result)
-
-        # futures = dask.persist(*lazy_results)  # trigger computation in the background
-        # results = dask.compute(*futures)
+            pool.starmap(make_figures, [[outdir, p3_data, g3_data, i_p3, blue_marble_imgs, overlay_sic, land_mode, ymd] for i_p3 in dt_idx_p3])
 
 
     # else: # serially
@@ -441,18 +423,18 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     #         _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=pre_loaded_land)
 
 
-def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, overlay_sic, land_mode, ymd):
+def make_figures(outdir, p3_data, g3_data, i_p3, blue_marble_imgs, overlay_sic, land_mode, ymd):
     """ Parallelized """
 
-    p3_time = df_p3['datetime'][i_p3]
+    p3_time = p3_data['datetime'][i_p3]
 
-    if isinstance(df_p3, pd.DataFrame):
+    if isinstance(p3_time, pd.Timestamp):
         p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
         fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
 
-    elif isinstance(df_p3, xr.Dataset):
-        p3_time_str = np_to_python_datetime(p3_time.values).strftime('%d %B, %Y at %H:%MZ')
-        fname_dt_str = np_to_python_datetime(p3_time.values).strftime('%Y%m%d_%H%MZ') # for image filename
+    elif isinstance(p3_time, np.datetime64):
+        p3_time_str = np_to_python_datetime(p3_time).strftime('%d %B, %Y at %H:%MZ')
+        fname_dt_str = np_to_python_datetime(p3_time).strftime('%Y%m%d_%H%MZ') # for image filename
 
     else:
         p3_time_str = ''
@@ -470,18 +452,20 @@ def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, o
     add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land_mode, ocean=True, gridlines=False)
 
     # first P3
+    img_p3 = p3_data['img'].reshape(p3_data['img_shape'])
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-    ax0.plot(df_p3['Longitude'][:i_p3], df_p3['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
-    add_aircraft_graphic(ax0, img_p3, df_p3['True_Heading'][i_p3], df_p3['Longitude'][i_p3], df_p3['Latitude'][i_p3], ccrs_geog, zorder=4)
-    ax0.plot(df_p3['Longitude'][i_p3:], df_p3['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+    ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
+    add_aircraft_graphic(ax0, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=4)
+    ax0.plot(p3_data['Longitude'][i_p3:], p3_data['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # now G-III if needed
-    if df_g3 is not None:
-        _, i_g3 = get_closest_datetime(p3_time, df_g3)
+    if len(g3_data) > 0:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+        img_g3 = g3_data['img'].reshape(g3_data['img_shape'])
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-        ax0.plot(df_g3['Longitude'][:i_g3], df_g3['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
-        add_aircraft_graphic(ax0, img_g3, df_g3['True_Hdg'][i_g3], df_g3['Longitude'][i_g3], df_g3['Latitude'][i_g3], ccrs_geog, zorder=4)
-        ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
+        add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=4)
+        ax0.plot(g3_data['Longitude'][i_g3:], g3_data['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # plot blue marble images
     if len(blue_marble_imgs) > 0:
