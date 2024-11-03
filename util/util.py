@@ -4,6 +4,7 @@ import rasterio
 import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
+from pyhdf.SD import SD, SDC
 from PIL import Image
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
@@ -45,6 +46,24 @@ def get_cpu_processes():
 
     return cores
 
+
+def load_sic(ymd):
+    # read sea ice data file and lat-lons
+    fsic = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
+    fgeo = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
+
+    # AMSR2 Sea Ice Concentration
+    sic = fsic.select('ASI Ice Concentration')[:]
+    lon = fgeo.select('Longitudes')[:]
+    lat = fgeo.select('Latitudes')[:]
+    # lon = change_range(lon, -180, 180) # change from 0-360 to -180 to 180
+
+    # mask nans and non-positive sic
+    sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
+    fsic.end()
+    fgeo.end()
+
+    return lon, lat, sic
 
 def load_geotiff(filepath):
 

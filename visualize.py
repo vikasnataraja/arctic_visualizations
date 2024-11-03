@@ -13,14 +13,15 @@ import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 
-
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-from pyhdf.SD import SD, SDC
-
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
+
+import dask
+import dask.dataframe as dd
+from dask.distributed import Client
 
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
@@ -240,7 +241,6 @@ def read_g3_iwg(fname, mts=False):
         return df
 
 
-
 def report_memory_usage(arr):
     byte_usage = arr.nbytes
     if byte_usage < 1024:
@@ -265,25 +265,6 @@ def change_range(arr, min_value, max_value):
     return (arr - min_value) % (max_value - min_value) + min_value
 
 
-def get_sic(ymd):
-    # read sea ice data file and lat-lons
-    fsic = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
-    fgeo = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
-
-    # AMSR2 Sea Ice Concentration
-    sic = fsic.select('ASI Ice Concentration')[:]
-    lon = fgeo.select('Longitudes')[:]
-    lat = fgeo.select('Latitudes')[:]
-    # lon = change_range(lon, -180, 180) # change from 0-360 to -180 to 180
-
-    # mask nans and non-positive sic
-    sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
-    fsic.end()
-    fgeo.end()
-
-    return lon, lat, sic
-
-
 def get_time_indices(df, dt):
     # convert ns to s
     seconds = list(np.array((np.diff(df['datetime'])/1e9), dtype='int'))
@@ -301,6 +282,7 @@ def get_time_indices(df, dt):
     dt_idx = np.array(dt_idx)
 
     return dt_idx
+
 
 def get_closest_datetime(dt, df_secondary):
     dt_list = list(df_secondary['datetime'])
@@ -320,6 +302,7 @@ def report_p3_dates(df_p3):
     print('Message [report_p3_dates]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
 
     return ymd, month
+
 
 def report_g3_dates(df_g3):
     # report times
@@ -343,6 +326,28 @@ def minimize_df(df, mode):
     return df
 
 
+def create_dask_dataframe(df, mode, ymd):
+    """
+    Convert pandas DataFrame to dask DataFrame.
+    We don't use dask.dataframe.from_pandas which tends to require specific formatting.
+    Instead, we simply save pandas df to a csv, then use dask to read it.
+    """
+    csv_dir = os.path.join(viz_utils.parent_dir, 'tmp_data/') # create csv_dir if it doesn't exist
+    if not os.path.isdir(csv_dir):
+        os.makedirs(csv_dir)
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        csv_fname = os.path.join(csv_dir, 'p3_{}.csv'.format(ymd))
+
+    else:
+        csv_fname = os.path.join(csv_dir, 'g3_{}.csv'.format(ymd))
+
+    df.to_csv(csv_fname) # might need to add index=False
+
+    dask_dataframe = dd.read_csv(csv_fname) # read in as dask
+    return dask_dataframe
+
+
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # transform the coordinates to the target projection
     x, y = ax.projection.transform_point(x=lon, y=lat, src_crs=source_ccrs)
@@ -352,7 +357,6 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
         img = img.rotate(heading, Image.BICUBIC)
     # create the AnnotationBbox
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
-
 
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt):
 
@@ -379,15 +383,6 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
     else:
         img_g3 = None # to prevent errors
 
-    # now for the extras
-    ############### add sea ice concentration ###############
-    if overlay_sic:
-        # read sea ice data file and lat-lons
-        lon, lat, sic = get_sic(ymd)
-
-    else:
-        lon, lat, sic = None, None, None # to prevent errors during parallelization
-
     ############### load blue marble imagery into a dictionary ###############
     ############### TODO: Not optimized for parallelization! ###############
     if underlay_blue_marble is not None:
@@ -399,12 +394,26 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
 
     ############### start execution ###############
     if parallel:
-        p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode) # create arguments for starmap
+        # p_args = create_args_starmap(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode) # create arguments for starmap
 
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
-        with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, p_args)
+        # with multiprocessing.Pool(processes=n_cores) as pool:
+        #     pool.starmap(make_figures, p_args)
+        ############### add sea ice concentration ###############
+        if overlay_sic:
+            # read sea ice data file and lat-lons in delayed fashion
+            lon, lat, sic = dask.delayed(viz_utils.load_sic)(ymd)
+
+        else:
+            lon, lat, sic = None, None, None # to prevent errors during parallelization
+
+        # make pandas df to dask df for faster, embarrassingly parallel execution
+        df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
+        df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
+
+        for count, i_p3 in enumerate(dt_idx_p3):
+            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode)
 
     else: # serially
         pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
