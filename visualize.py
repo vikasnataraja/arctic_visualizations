@@ -373,6 +373,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
+    print('Message [plot_flight_path]: P-3   = {} samples\nG-III = {} samples'.format(len(df_p3), len(df_g3)))
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
