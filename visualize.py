@@ -456,7 +456,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, blue_marble_imgs, sic_data, lan
                   'Visualization by Vikas Nataraja/SSFR Team'
 
     ####################################################################################
-    # print('Starting to create figure for {}'.format(p3_time_str))
+    print('Starting to create figure for {}'.format(p3_time_str))
     fig = plt.figure(figsize=(20, 20))
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
