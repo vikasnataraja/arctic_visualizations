@@ -390,6 +390,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         land_mode = None
 
     else: # use other land features instead
+        blue_marble_imgs = {}
         land_mode = 'natural'
 
     ############### start execution ###############
