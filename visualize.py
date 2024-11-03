@@ -412,8 +412,17 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, pa
         df_p3 = create_dask_dataframe(df_p3, 'P3', ymd)
         df_g3 = create_dask_dataframe(df_g3, 'G3', ymd)
 
+        # set dask params
+        client = Client(n_workers=n_cores)
+
+        lazy_results = []
         for count, i_p3 in enumerate(dt_idx_p3):
-            _ = make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode=land_mode)
+            result = dask.delayed(make_figures)(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic, land_mode)
+            lazy_results.append(result)
+
+        futures = dask.persist(*lazy_results)  # trigger computation in the background
+        results = dask.compute(*futures)
+
 
     else: # serially
         pre_loaded_land = viz_utils.load_land_feature(type=land_mode) # for serial processing, pre load land feature
