@@ -441,6 +441,10 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
 
     p3_time_str = p3_time.strftime('%d %B, %Y at %H:%MZ')
     fname_dt_str = p3_time.strftime('%Y%m%d_%H%MZ') # for image filename
+    fname_out = os.path.join(outdir, fname_dt_str + '.png')
+    if os.path.isfile(fname_out):
+        print('Message [make_figures]: Skipping {} as it already exists.'.format(fname_out))
+        return 0
 
     title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
@@ -485,13 +489,11 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     # add credit text and title
     # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
     ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20, color="white")
-    fname_out = os.path.join(outdir, fname_dt_str + '.png')
     fig.set_facecolor('black') # for hyperwall
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
-
     plt.close(fig)
-    # print('Saved figure: ', fname_out)
 
+    # print('Saved figure: ', fname_out)
     return 1
 
 
