@@ -8,6 +8,7 @@ matplotlib.use('Agg')
 import multiprocessing
 import cartopy
 import numpy as np
+from tqdm import tqdm
 
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
@@ -423,7 +424,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
             pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
     else: # serially
-        for count, i_p3 in enumerate(dt_idx_p3):
+        for count, i_p3 in tqdm(enumerate(dt_idx_p3)):
             _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
 
 
@@ -446,7 +447,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
                   'Visualization by Vikas Nataraja/SSFR Team'
 
     ####################################################################################
-    print('Starting to create figure for {}'.format(p3_time_str))
+    # print('Starting to create figure for {}'.format(p3_time_str))
     fig = plt.figure(figsize=(20, 20))
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
@@ -489,7 +490,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
 
     plt.close(fig)
-    print('Saved figure: ', fname_out)
+    # print('Saved figure: ', fname_out)
 
     return 1
 
