@@ -420,11 +420,11 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, [[outdir, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
+            pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
     else: # serially
         for count, i_p3 in enumerate(dt_idx_p3):
-            _ = make_figures(outdir, p3_data, g3_data, i_p3, sic_data)
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
 
 
 def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
