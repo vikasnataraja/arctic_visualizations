@@ -457,7 +457,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     img_p3 = p3_data['img']
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
     ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
-    add_aircraft_graphic(ax0, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=4)
+    add_aircraft_graphic(ax0, img_p3, p3_data['Track_Angle'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=4)
     ax0.plot(p3_data['Longitude'][i_p3:], p3_data['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # now G-III if needed
@@ -467,7 +467,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
         img_g3 = g3_data['img']
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
-        add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=4)
+        add_aircraft_graphic(ax0, img_g3, g3_data['Track'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=4)
         ax0.plot(g3_data['Longitude'][i_g3:], g3_data['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
 
     # plot blue marble images
