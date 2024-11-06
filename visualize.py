@@ -312,7 +312,7 @@ def get_closest_datetime(dt, df_secondary):
     return closest_dt, closest_dt_idx
 
 
-def report_p3_dates(df_p3):
+def get_p3_dates(df_p3):
     # use second index (not first in case there was a misread header) to use as reference date
     p3_start_dt = df_p3['datetime'].iloc[1].to_pydatetime()
     p3_end_dt   = df_p3['datetime'].iloc[len(df_p3) - 1].to_pydatetime()
@@ -320,7 +320,7 @@ def report_p3_dates(df_p3):
     ymd = p3_start_dt.strftime('%Y%m%d')
     month = p3_start_dt.strftime('%m')
     # report times
-    print('Message [report_p3_dates]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
+    # print('Message [report_p3_dates]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
 
     return ymd, month
 
@@ -478,8 +478,8 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
 
-    # print a report and get dates
-    ymd, month = report_p3_dates(df_p3)
+    # get dates
+    ymd, month = get_p3_dates(df_p3)
 
     # save images in dirs with dates
     outdir_with_date = os.path.join(outdir, ymd)
@@ -667,11 +667,10 @@ if __name__ == '__main__':
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
 
+    # get dates
+    ymd, month = get_p3_dates(df_p3)
 
     ############### load blue marble imagery into a dictionary ###############
-    # print a report and get dates
-    ymd, month = report_p3_dates(df_p3)
-
     if args.underlay_blue_marble is not None:
         blue_marble_imgs = viz_utils.load_blue_marble_imagery(args.underlay_blue_marble, month)
         land = None
