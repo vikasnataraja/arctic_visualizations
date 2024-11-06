@@ -9,7 +9,48 @@ from PIL import Image
 import pyproj
 import cartopy.crs as ccrs
 
-from constants import satellite_fnames
+
+# filenames of the satellite images
+satellite_fnames = {
+    '20240528': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-28-164000Z',},
+
+    '20240530': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-30-144500Z',},
+
+    '20240531': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-31-152500Z',},
+
+    '20240603': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-03-141000Z',},
+
+    '20240605': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-05-171000Z',},
+
+    '20240606': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-06-161000Z',},
+
+    '20240607': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-07-183000Z',},
+
+    '20240610': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-10-171500Z',},
+
+    '20240611': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-11-175500Z'},
+
+    '20240613': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-13-142000Z',},
+
+    '20240725': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-25-162000Z',},
+
+    '20240729': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-29-154500Z',},
+
+    '20240730': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-30-131000Z',},
+
+    '20240801': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-01-143000Z',},
+
+    '20240802': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-02-151000Z',},
+
+    '20240807': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-07-165500Z',},
+
+    '20240808': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-08-155500Z',},
+
+    '20240809': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-09-181500Z',},
+
+    '20240815': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-15-172000Z',},
+
+}
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
@@ -152,13 +193,13 @@ def transform_extent(extent, source_ccrs, target_ccrs):
     return [x0, x1, y0, y1]
 
 
-def load_satellite_image(ymd, mode='FalseColor367', satellite='Terra', instrument='MODIS', region='lincoln'):
+def load_satellite_image(ymd, mode='FalseColor367', satellite='Terra', instrument='MODIS'):
     # MODIS-TERRA_FalseColor367_2024-05-31-152500Z_(-877574.55,877574.55,-751452.90,963254.75)_(-80.0000,-30.0000,71.0000,88.0000)
 
     if mode == 'FalseColor367':
-        data_dir = 'data/false_color_367'
+        data_dir = os.path.join(parent_dir, 'data/false_color_367')
     else:
-        data_dir = 'data/true_color'
+        data_dir = os.path.join(parent_dir, 'data/true_color')
 
     all_files = os.listdir(data_dir)
     fbasename = list(filter(lambda x: x.startswith(satellite_fnames[ymd][mode]), all_files))[0]
