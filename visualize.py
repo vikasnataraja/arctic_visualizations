@@ -582,7 +582,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     # Add inset map if within focus region
     if inset_map_settings[ymd_str]['start'] <= p3_time <= inset_map_settings[ymd_str]['end']:
 
-        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, bbox_to_anchor=(0.4, -0.1, 0.6, 0.6), width='75%', height='60%')
+        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
 
     # add science flight number as a bbox
     ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
