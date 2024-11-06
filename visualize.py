@@ -4,7 +4,6 @@ import argparse
 import pandas as pd
 import datetime
 import matplotlib
-matplotlib.use('Agg')
 import multiprocessing
 import cartopy
 import numpy as np
@@ -13,6 +12,7 @@ from tqdm import tqdm
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
@@ -23,14 +23,23 @@ from PIL import Image
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
+from util.constants import inset_map_settings, flight_date_to_sf_dict, text_bg_colors
+
 import warnings
+import platform
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for plt
 plt.style.use(MPL_STYLE_PATH)
 
 
-def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land=None, y_fontcolor='black'):
+
+if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows')):
+    matplotlib.use('Agg') # for supercomputer only
+
+
+def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land=None, y_fontcolor='black', zorders={'land': 0, 'ocean': 1, 'coastline': 2, 'gridlines': 2}):
     """
     Adds ancillary features to the axis.
     """
@@ -53,26 +62,26 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         colors = {'ocean':'aliceblue', 'land':'#fcf4e8', 'coastline':'black', 'title':'black', 'background':'white'}
 
     if ocean:
-        ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
+        ax.add_feature(cartopy.feature.OCEAN.with_scale('10m'), zorder=zorders['ocean'], facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
         if ((isinstance(land, bool)) and (land)) or ((isinstance(land, str)) and (land.lower() == 'default')): #land=True or land = 'default'
-            ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
+            ax.add_feature(cartopy.feature.LAND.with_scale('10m'), zorder=zorders['land'], facecolor=colors['land'], edgecolor='none')
 
         elif (isinstance(land, str)) and (land.lower() in ['topo', 'natural', 'hypso']): # load and then show, made for parallel non-sharing
             land_tiff = viz_utils.load_land_feature(land)
-            ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+            ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
 
         elif isinstance(land, np.ndarray): # show pre-loaded array, for serialized runs
-            ax.imshow(land, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+            ax.imshow(land, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
 
 
     if coastline:
-        ax.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), zorder=2, edgecolor=colors['coastline'], linewidth=1, alpha=1)
+        ax.add_feature(cartopy.feature.COASTLINE.with_scale('10m'), zorder=zorders['coastline'], edgecolor=colors['coastline'], linewidth=1, alpha=1)
 
     if gridlines:
         gl = ax.gridlines(linewidth=1.5, color='darkgray',
-                    draw_labels=True, zorder=2, alpha=0.75, linestyle=(0, (1, 1)),
+                    draw_labels=True, zorder=zorders['gridlines'], alpha=0.75, linestyle=(0, (1, 1)),
                     x_inline=False, y_inline=True, crs=ccrs_data)
 
         gl.xformatter = LongitudeFormatter()
@@ -98,8 +107,15 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
 def df_doy_to_dt(doy_seconds):
     doy, seconds = doy_seconds.split('_')
     year_doy = '2024' + '_' + doy
-    init_dt = datetime.datetime.strptime(year_doy, "%Y_%j")
-    actual_dt = init_dt + datetime.timedelta(seconds=int(seconds))
+    try:
+        init_dt = datetime.datetime.strptime(year_doy, "%Y_%j")
+        actual_dt = init_dt + datetime.timedelta(seconds=int(seconds))
+
+    except Exception as err: #TODO: Change this to a class to fix this issue permanently
+        print(err)
+        init_dt = datetime.datetime(2024, 8, 1) # temporary fix
+        actual_dt = init_dt + datetime.timedelta(seconds=1e4)
+
     return actual_dt
 
 def df_timestamp_to_dt(timestamp):
@@ -378,11 +394,86 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     # create the AnnotationBbox
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
+
+def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, width='75%', height='60%'):
+    """ Add inset to existing parent axis map"""
+
+    p3_time = p3_data['datetime'][i_p3]
+
+    if isinstance(p3_time, pd.Timestamp):
+        p3_time = p3_time.to_pydatetime()
+
+    elif isinstance(p3_time, np.datetime64):
+        p3_time = np_to_python_datetime(p3_time)
+
+    # load satellite params
+    sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(p3_time.strftime('%Y%m%d'))
+    xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_nearside)
+
+    # create the inset axis
+    axins = inset_axes(ax_parent, width=width, height=height,
+                       bbox_to_anchor=bbox_to_anchor,
+                       bbox_transform=ax_parent.transAxes,
+                       axes_class=cartopy.mpl.geoaxes.GeoAxes,
+                       axes_kwargs=dict(projection=ccrs_nearside)
+                      )
+
+    # Add land, state borders, coastline, and country borders to inset map
+    add_ancillary(axins, cartopy_black=True, coastline=True, land=None, ocean=True, gridlines=False, zorders={'ocean': 0, 'coastline': 2})
+
+    # add satellite image
+    # axins.imshow(sat_img.filled(np.nan), extent=xy_extent_projection, transform=ccrs_projection, zorder=1)
+    axins.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_nearside, zorder=1)
+
+    # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
+    axins.set_extent(inset_extent, ccrs_geog)
+
+    # add connectors from main map to inset
+    _, connectors = ax_parent.indicate_inset_zoom(axins, edgecolor="black", linewidth=2, alpha=1, transform=ax_parent.transData)
+
+    # highlight only a couple of connectors
+    # 0: bottom left corner, 1: top left corner, 2: bottom right corner, 3: top right corner
+    conns = [0, 3]
+    for i in np.arange(4):
+        if i in conns:
+            connectors[i].set_visible(True)
+            connectors[i].set_linewidth(2)
+        else:
+            connectors[i].set_visible(False)
+
+    # change border colors and width
+    for spine in axins.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(2)
+
+    # now plot inside
+    img_p3 = p3_data['img']
+    # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+    axins.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+    axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='cyan', alpha=0.75, zorder=5)
+    add_aircraft_graphic(axins, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
+
+
+    # now G-III if needed
+    if len(g3_data) > 0:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+
+        img_g3 = g3_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        axins.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        axins.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
+        add_aircraft_graphic(axins, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
-    print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
+
+    if df_g3 is not None:
+        print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
+    else:
+        print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = 0'.format(len(df_p3)))
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
     print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
@@ -439,14 +530,17 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     elif isinstance(p3_time, np.datetime64):
         p3_time = np_to_python_datetime(p3_time)
 
-    p3_time_str = p3_time.strftime('%d %B, %Y at %H:%MZ')
+    p3_time_str = p3_time.strftime('%H:%MZ')
+    p3_date_str = p3_time.strftime('%d %B, %Y')
     fname_dt_str = p3_time.strftime('%Y%m%d_%H%MZ') # for image filename
+    ymd_str = p3_time.strftime('%Y%m%d') # for dictionary label for text
+
     fname_out = os.path.join(outdir, fname_dt_str + '.png')
     if os.path.isfile(fname_out):
         print('Message [make_figures]: Skipping {} as it already exists.'.format(fname_out))
         return 0
 
-    title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
+    title_str = 'NASA ARCSIX - Flight Path'
     credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
                   'Visualization by Vikas Nataraja/SSFR Team'
 
@@ -458,22 +552,20 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land, ocean=True, gridlines=False)
 
     # first P3
-    # img_p3 = p3_data['img'].reshape(p3_data['img_shape'])
     img_p3 = p3_data['img']
     # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-    ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
-    add_aircraft_graphic(ax0, img_p3, p3_data['Track_Angle'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=4)
-    ax0.plot(p3_data['Longitude'][i_p3:], p3_data['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+    ax0.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+    ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=5)
+    add_aircraft_graphic(ax0, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
 
-    # now G-III if needed
+    # now G-III if it exists
     if len(g3_data) > 0:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
-        # img_g3 = g3_data['img'].reshape(g3_data['img_shape'])
         img_g3 = g3_data['img']
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-        ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
-        add_aircraft_graphic(ax0, img_g3, g3_data['Track'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=4)
-        ax0.plot(g3_data['Longitude'][i_g3:], g3_data['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
+        add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
 
     # plot blue marble images
     if len(blue_marble_imgs) > 0:
@@ -482,20 +574,29 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
 
     # plot sea ice concentration
     if len(sic_data) > 0:
-        ax0.pcolormesh(sic_data['lon'], sic_data['lat'], sic_data['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3)
+        ax0.pcolormesh(sic_data['lon'], sic_data['lat'], sic_data['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
 
     ax0.set_global()
-
-    # add credit text and title
-    # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
-    ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20, color="white")
     fig.set_facecolor('black') # for hyperwall
+
+    # Add inset map if within focus region
+    if inset_map_settings[ymd_str]['start'] <= p3_time <= inset_map_settings[ymd_str]['end']:
+
+        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, bbox_to_anchor=(0.4, -0.1, 0.6, 0.6), width='75%', height='60%')
+
+    # add science flight number as a bbox
+    ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
+
+    # add time
+    ax0.text(0.88, 0.025, '{} at {}'.format(p3_date_str, p3_time_str), fontweight="bold", color='white', fontsize=14, ha="center", va="center", ma="center",
+             transform=ax0.transAxes)
+
+    # plt.show()
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
     plt.close(fig)
 
-    # print('Saved figure: ', fname_out)
+    print('Saved figure: ', fname_out)
     return 1
-
 
 def get_filenames(args):
 

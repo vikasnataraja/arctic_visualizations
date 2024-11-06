@@ -6,6 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyhdf.SD import SD, SDC
 from PIL import Image
+import pyproj
+import cartopy.crs as ccrs
+
+from constants import satellite_fnames
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
@@ -139,3 +143,45 @@ def load_aircraft_graphic(mode, width):
 
     img = img.resize((int(width * 1.2), width)) # retain 1.2 aspect ratio
     return img
+
+
+def transform_extent(extent, source_ccrs, target_ccrs):
+    transformer = pyproj.Transformer.from_proj(source_ccrs.proj4_init, target_ccrs.proj4_init, always_xy=True)
+    x0, y0 = transformer.transform(extent[0], extent[2])
+    x1, y1 = transformer.transform(extent[1], extent[3])
+    return [x0, x1, y0, y1]
+
+
+def load_satellite_image(ymd, mode='FalseColor367', satellite='Terra', instrument='MODIS', region='lincoln'):
+    # MODIS-TERRA_FalseColor367_2024-05-31-152500Z_(-877574.55,877574.55,-751452.90,963254.75)_(-80.0000,-30.0000,71.0000,88.0000)
+
+    if mode == 'FalseColor367':
+        data_dir = 'data/false_color_367'
+    else:
+        data_dir = 'data/true_color'
+
+    all_files = os.listdir(data_dir)
+    fbasename = list(filter(lambda x: x.startswith(satellite_fnames[ymd][mode]), all_files))[0]
+    fname = os.path.join(data_dir, fbasename)
+
+    xy_extent, geog_extent = get_extents(fname)
+
+    img = plt.imread(fname)
+    whitespace = (np.sum(img[:, :, :-1], axis=-1) == 3) # mask out whitespace
+    whitespace_3d = np.stack([whitespace, whitespace, whitespace], axis=-1)
+
+    img_3d = np.ma.masked_array(img[:, :, :-1], mask=whitespace_3d)
+    np.ma.set_fill_value(img_3d, np.nan)
+
+    ccrs_projection = ccrs.Orthographic(central_longitude=np.mean(geog_extent[:2]), central_latitude=np.mean(geog_extent[2:]))
+
+    return img_3d, xy_extent, geog_extent, ccrs_projection
+
+
+def get_extents(fname):
+    xy_extent, geog_extent = os.path.basename(fname).split('_')[-2:]
+
+    xy_extent = list(map(np.float64, xy_extent.strip('(').strip(')').split(',')))
+    geog_extent = list(map(np.float16, os.path.splitext(geog_extent)[0].strip('(').strip(')').split(',')))
+
+    return xy_extent, geog_extent
