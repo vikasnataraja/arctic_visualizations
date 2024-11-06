@@ -515,7 +515,7 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
             pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
     else: # serially
-        for count, i_p3 in tqdm(enumerate(dt_idx_p3)):
+        for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
             _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
 
 
@@ -595,7 +595,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
     plt.close(fig)
 
-    print('Saved figure: ', fname_out)
+    # print('Saved figure: ', fname_out)
     return 1
 
 def get_filenames(args):
