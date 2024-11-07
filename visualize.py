@@ -425,7 +425,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
 
 
     # load satellite params
-    sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(p3_time.strftime('%Y%m%d'))
+    sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd=p3_time.strftime('%Y%m%d'), mode='TrueColor')
     xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_nearside)
 
     # create the inset axis
