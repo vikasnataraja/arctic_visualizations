@@ -12,43 +12,62 @@ import cartopy.crs as ccrs
 
 # filenames of the satellite images
 satellite_fnames = {
-    '20240528': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-28-164000Z',},
+    '20240528': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-05-28-164000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-164000Z'},
 
-    '20240530': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-30-144500Z',},
+    '20240530': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-05-30-144500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-144500Z'},
 
-    '20240531': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-05-31-152500Z',},
+    '20240531': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-05-31-152500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-152500Z'},
 
-    '20240603': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-03-141000Z',},
+    '20240603': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-03-141000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-141000Z'},
 
-    '20240605': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-05-171000Z',},
+    '20240605': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-05-171000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-171000Z'},
 
-    '20240606': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-06-161000Z',},
+    '20240606': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-06-161000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-161000Z'},
 
-    '20240607': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-07-183000Z',},
+    '20240607': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-07-183000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-183000Z'},
 
-    '20240610': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-10-171500Z',},
+    '20240610': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-10-171500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-171500Z'},
 
-    '20240611': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-11-175500Z'},
+    '20240611': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-11-175500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-175500Z'},
 
-    '20240613': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-06-13-142000Z',},
+    '20240613': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-06-13-142000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-142000Z'},
 
-    '20240725': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-25-162000Z',},
+    '20240725': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-07-25-162000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-162000Z'},
 
-    '20240729': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-29-154500Z',},
+    '20240729': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-07-29-154500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-154500Z'},
 
-    '20240730': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-07-30-131000Z',},
+    '20240730': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-07-30-131000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-131000Z'},
 
-    '20240801': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-01-143000Z',},
+    '20240801': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-01-143000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-143000Z'},
 
-    '20240802': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-02-151000Z',},
+    '20240802': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-02-151000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-151000Z'},
 
-    '20240807': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-07-165500Z',},
+    '20240807': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-07-165500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-165500Z'},
 
-    '20240808': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-08-155500Z',},
+    '20240808': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-08-155500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-155500Z'},
 
-    '20240809': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-09-181500Z',},
+    '20240809': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-09-181500Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-181500Z'},
 
-    '20240815': {'FalseColor367':'MODIS-TERRA_FalseColor367_2024-08-15-172000Z',},
+    '20240815': {'FalseColor367': 'MODIS-TERRA_FalseColor367_2024-08-15-172000Z',
+                 'TrueColor':     'MODIS-TERRA_TrueColor_2024-05-28-172000'},
 
 }
 
