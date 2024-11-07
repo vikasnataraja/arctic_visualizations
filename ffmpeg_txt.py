@@ -3,23 +3,26 @@ import datetime
 from argparse import ArgumentParser
 
 
-no_video_dirs = []
 if __name__ == "__main__":
 
     START_TIME = datetime.datetime.now()
     parser = ArgumentParser(prog='ffmpeg_txt')
     parser.add_argument('--fdir', type=str, metavar='',
-                        help='Top-level source directory\n')
+                        help='Top-level source directory.\n')
     parser.add_argument('--frame_rate', type=float, metavar='', default=0.5,
                         help='Reciprocal of frame rate i.e., --frame rate=0.5 is 2 frames per second.\n')
+    parser.add_argument('--skip', nargs='+', type=str, metavar='', default=None,
+                        help='Names of the directories to skip. By default, no directories are skipped.')
     args = parser.parse_args()
 
+    if args.skip is None:
+        skip_dirs = []
     # sort sub-directories by date
     subs = sorted([f for f in os.listdir(args.fdir) if os.path.isdir(os.path.join(args.fdir, f))])
 
     # make videos one by one
     for sub in subs:
-        if sub in no_video_dirs:
+        if sub in skip_dirs:
             print("Message [ffmpeg_txt]: Skipping {}...".format(sub))
             continue
 
