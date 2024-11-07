@@ -409,15 +409,18 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     # only add the inset if either the P-3 or the G-III are within the region
     # whichever one is out of bounds will not be plotted within the inset
 
+    # set internal extent to prevent size zoom out issues
+    internal_extent = [inset_extent[0] + 2, inset_extent[1] - 2, inset_extent[2] + 0.25, inset_extent[3] - 0.25]
+
     plot_p3 = False
-    if (inset_extent[0] < p3_data['Longitude'][i_p3] < inset_extent[1]) and (inset_extent[2] < p3_data['Latitude'][i_p3] < inset_extent[3]):
+    if (internal_extent[0] < p3_data['Longitude'][i_p3] < internal_extent[1]) and (internal_extent[2] < p3_data['Latitude'][i_p3] < internal_extent[3]):
         plot_p3 = True
 
     plot_g3 = False
     if len(g3_data) > 0:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
 
-        if (inset_extent[0] < g3_data['Longitude'][i_g3] < inset_extent[1]) and (inset_extent[2] < p3_data['Latitude'][i_g3] < inset_extent[3]):
+        if (internal_extent[0] < g3_data['Longitude'][i_g3] < internal_extent[1]) and (internal_extent[2] < p3_data['Latitude'][i_g3] < internal_extent[3]):
             plot_g3 = True
 
     if (not plot_p3) and (not plot_g3): # no need to plot
@@ -606,8 +609,7 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
     ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
 
     # add time
-    ax0.text(0.88, 0.025, '{} at {}'.format(p3_date_str, p3_time_str), fontweight="bold", color='white', fontsize=14, ha="center", va="center", ma="center",
-             transform=ax0.transAxes)
+    ax0.text(0.88, 0.025, '{} at {}'.format(p3_date_str, p3_time_str), fontweight="bold", color='white', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes)
 
     # plt.show()
     fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
