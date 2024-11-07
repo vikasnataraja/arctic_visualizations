@@ -31,6 +31,9 @@ if __name__ == "__main__":
 
     if args.skip is None:
         skip_dirs = []
+
+    else:
+        skip_dirs = args.skip
     # sort sub-directories by date
     subs = sorted([f for f in os.listdir(args.fdir) if os.path.isdir(os.path.join(args.fdir, f))])
 
