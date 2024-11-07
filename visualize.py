@@ -406,6 +406,24 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     elif isinstance(p3_time, np.datetime64):
         p3_time = np_to_python_datetime(p3_time)
 
+    # only add the inset if either the P-3 or the G-III are within the region
+    # whichever one is out of bounds will not be plotted within the inset
+
+    plot_p3 = False
+    if (inset_extent[0] < p3_data['Longitude'][i_p3] < inset_extent[1]) and (inset_extent[2] < p3_data['Latitude'][i_p3] < inset_extent[3]):
+        plot_p3 = True
+
+    plot_g3 = False
+    if len(g3_data) > 0:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+
+        if (inset_extent[0] < g3_data['Longitude'][i_g3] < inset_extent[1]) and (inset_extent[2] < p3_data['Latitude'][i_g3] < inset_extent[3]):
+            plot_g3 = True
+
+    if (not plot_p3) and (not plot_g3): # no need to plot
+        return 0
+
+
     # load satellite params
     sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(p3_time.strftime('%Y%m%d'))
     xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_nearside)
@@ -425,37 +443,16 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     # axins.imshow(sat_img.filled(np.nan), extent=xy_extent_projection, transform=ccrs_projection, zorder=1)
     axins.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_nearside, zorder=1)
 
-    # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
-    axins.set_extent(inset_extent, ccrs_geog)
-
-    # add connectors from main map to inset
-    _, connectors = ax_parent.indicate_inset_zoom(axins, edgecolor="black", linewidth=2, alpha=1, transform=ax_parent.transData)
-
-    # highlight only a couple of connectors
-    # 0: bottom left corner, 1: top left corner, 2: bottom right corner, 3: top right corner
-    conns = [0, 3]
-    for i in np.arange(4):
-        if i in conns:
-            connectors[i].set_visible(True)
-            connectors[i].set_linewidth(2)
-        else:
-            connectors[i].set_visible(False)
-
-    # change border colors and width
-    for spine in axins.spines.values():
-        spine.set_edgecolor('black')
-        spine.set_linewidth(2)
-
     # now plot inside
-    img_p3 = p3_data['img']
-    # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-    axins.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
-    axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='cyan', alpha=0.75, zorder=5)
-    add_aircraft_graphic(axins, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
-
+    if plot_p3:
+        img_p3 = p3_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        axins.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='cyan', alpha=0.75, zorder=5)
+        add_aircraft_graphic(axins, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
 
     # now G-III if needed
-    if len(g3_data) > 0:
+    if plot_g3:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
 
         img_g3 = g3_data['img']
@@ -463,6 +460,27 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
         axins.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
         axins.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
         add_aircraft_graphic(axins, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
+    axins.set_extent(inset_extent, ccrs_geog)
+
+    # change border colors and width
+    for spine in axins.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(2)
+
+    # add connectors from main map to inset
+    _, connectors = ax_parent.indicate_inset_zoom(axins, edgecolor="black", linewidth=2, alpha=1, transform=ax_parent.transData)
+
+    # highlight only a couple of connectors
+    # 0: bottom left corner, 1: top left corner, 2: bottom right corner, 3: top right corner
+    for i in np.arange(4):
+        if i in inset_map_settings[p3_time.strftime('%Y%m%d')]['connectors']:
+            connectors[i].set_visible(True)
+            connectors[i].set_linewidth(2)
+        else:
+            connectors[i].set_visible(False)
+    return 1
 
 
 def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
