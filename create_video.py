@@ -1,3 +1,15 @@
+"""
+create_video.py
+
+This script generates MP4 video files using ffmpeg. Note that `create_video_metadata.txt` must exist within each sub-directory. This text file can be created by running ffmpeg_txt.py
+
+CLI Args:
+    --fdir : str
+        Top-level source directory containing subdirectories with video metadata files.
+
+Example:
+    python ffmpeg_txt.py --fdir /path/to/source --frame_rate 0.5 --skip dir1 dir2
+"""
 import os
 import sys
 import datetime

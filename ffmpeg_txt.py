@@ -1,3 +1,17 @@
+"""
+ffmpeg_txt.py
+
+This script generates a metadata text file called `create_video_metadata.txt` for creating videos from PNG images using ffmpeg.
+
+CLI Args:
+    --fdir: Top-level source directory containing subdirectories with PNG images.
+    --frame_rate: Reciprocal of frame rate (default is 0.5, which is 2 frames per second).
+    --skip: Names of the directories to skip (default is None, meaning no directories are skipped).
+
+Example:
+    python ffmpeg_txt.py --fdir /path/to/source --frame_rate 0.5 --skip dir1 dir2
+
+"""
 import os
 import datetime
 from argparse import ArgumentParser
