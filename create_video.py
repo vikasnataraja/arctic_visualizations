@@ -23,11 +23,23 @@ if __name__ == "__main__":
     parser = ArgumentParser(prog='create_video')
     parser.add_argument('--fdir', type=str, metavar='',
                         help='Top-level source directory\n')
+    parser.add_argument('--skip', nargs='+', type=str, metavar='', default=None,
+                        help='Names of the directories to skip. By default, no directories are skipped.')
     args = parser.parse_args()
+
+    if args.skip is None:
+        skip_dirs = []
+
+    else:
+        skip_dirs = args.skip
 
     subs = sorted([f for f in os.listdir(args.fdir) if os.path.isdir(os.path.join(args.fdir, f))])
 
     for sub in subs:
+
+        if sub in skip_dirs:
+            print("Message [create_video]: Skipping {}...".format(sub))
+            continue
 
         mp4name = os.path.join(args.fdir, sub) + '.mp4'
 
