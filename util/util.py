@@ -112,6 +112,8 @@ def get_cpu_processes():
 
 
 def load_sic(ymd):
+
+    sic_data = {}
     # read sea ice data file and lat-lons
     fsic = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
     fgeo = SD(os.path.join(parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
@@ -124,10 +126,15 @@ def load_sic(ymd):
 
     # mask nans and non-positive sic
     sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
+
+    sic_data['lon'] = lon
+    sic_data['lat'] = lat
+    sic_data['sic'] = sic
+
     fsic.end()
     fgeo.end()
 
-    return lon, lat, sic
+    return sic_data
 
 def load_geotiff(filepath):
 
