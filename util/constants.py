@@ -45,7 +45,7 @@ inset_map_settings = {
                                },
                     '20240611':{'start': datetime.datetime(2024, 6, 11, 12, 40),
                                 'end'  : datetime.datetime(2024, 6, 11, 17, 5),
-                                'extent':[-90, -45, 83, 86.25],
+                                'extent':[-100, -35, 83, 86.6],
                                 'connectors': [0, 3]
                                },
                     '20240613':{'start': datetime.datetime(2024, 6, 13, 12, 45),
@@ -55,47 +55,47 @@ inset_map_settings = {
                                },
                     '20240725':{'start': datetime.datetime(2024, 7, 25, 12, 44),
                                 'end'  : datetime.datetime(2024, 7, 25, 16, 4),
-                                'extent':[-85, -48, 83, 85.5],
+                                'extent':[-88, -45, 82.75, 86.5],
                                 'connectors': [0, 3]
                                },
                     '20240729':{'start': datetime.datetime(2024, 7, 29, 13, 0),
                                 'end'  : datetime.datetime(2024, 7, 29, 17, 5),
-                                'extent': [-60, -40, 83, 85.5],
+                                'extent': [-60, -35, 83, 85.75],
                                 'connectors': [0, 3]
                                },
                     '20240730':{'start': datetime.datetime(2024, 7, 30, 12, 30),
                                 'end'  : datetime.datetime(2024, 7, 30, 16, 10),
-                                'extent':[-60, -20, 83, 85],
-                                'connectors': [0, 3]
+                                'extent':[-60, -20, 82, 85.5],
+                                'connectors': [1, 3]
                                },
                     '20240801':{'start': datetime.datetime(2024, 8, 1, 13, 0),
                                 'end'  : datetime.datetime(2024, 8, 1, 16, 15),
-                                'extent':[-35, -10, 81, 85],
-                                'connectors': [0, 3]
+                                'extent':[-40, -10, 81, 85.5],
+                                'connectors': [1, 3]
                                },
                     '20240802':{'start': datetime.datetime(2024, 8, 2, 12, 40),
                                 'end'  : datetime.datetime(2024, 8, 2, 16, 40),
-                                'extent':[-75, -45, 83, 85.5],
+                                'extent':[-75, -42, 82.75, 85.5],
                                 'connectors': [0, 3]
                                },
                     '20240807':{'start': datetime.datetime(2024, 8, 7, 12, 45),
                                 'end'  : datetime.datetime(2024, 8, 7, 17, 0),
-                                'extent':[-105, -90, 81.5, 84.25],
+                                'extent':[-105, -80, 81.5, 85],
                                 'connectors': [0, 3]
                                },
                     '20240808':{'start': datetime.datetime(2024, 8, 8, 12, 20),
                                 'end'  : datetime.datetime(2024, 8, 8, 16, 40),
-                                'extent':[-70, -35, 82, 84.75],
+                                'extent':[-70, -25, 81.5, 85.25],
                                 'connectors': [0, 3]
                                },
                     '20240809':{'start': datetime.datetime(2024, 8, 9, 12, 25),
                                 'end'  : datetime.datetime(2024, 8, 9, 17, 10),
-                                'extent':[-110, -80, 79.5, 83.5],
+                                'extent':[-110, -80, 79.5, 84.25],
                                 'connectors': [0, 3]
                                },
                     '20240815':{'start': datetime.datetime(2024, 8, 15, 13, 0),
                                 'end'  : datetime.datetime(2024, 8, 15, 15, 50),
-                                'extent':[-35, 7, 83.75, 84.75],
+                                'extent':[-42, 7, 83.75, 85],
                                 'connectors': [0, 3]
                                },
                    }
