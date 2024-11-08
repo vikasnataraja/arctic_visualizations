@@ -492,18 +492,18 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     return 1
 
 
-def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
+def prepare_data(df_p3, df_g3, outdir, dt):
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
 
     if df_g3 is not None:
-        print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
+        print('Message [prepare_data]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
     else:
-        print('Message [plot_flight_path]: # of samples\nP-3   = {}\nG-III = 0'.format(len(df_p3)))
+        print('Message [prepare_data]: # of samples\nP-3   = {}\nG-III = 0'.format(len(df_p3)))
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
-    print('Message [plot_flight_path]: {} time steps will be visualized'.format(dt_idx_p3.size))
+    print('Message [prepare_data]: {} time steps will be visualized'.format(dt_idx_p3.size))
 
     # get dates and print a statement
     ymd, month = report_p3_dates(df_p3)
@@ -522,34 +522,14 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
     else:
         img_g3 = None # to prevent errors
 
-    if overlay_sic:
-        # read sea ice data file and lat-lons in delayed fashion
-        sic_data = {}
-        lon, lat, sic = viz_utils.load_sic(ymd)
-        sic_data['lon'] = lon
-        sic_data['lat'] = lat
-        sic_data['sic'] = sic
-
-    ############### start execution ###############
+    # make dataframes into dictionaries
     p3_data = create_dictionary(df_p3, img_p3, 'P3')
     g3_data = create_dictionary(df_g3, img_g3, 'G3')
 
-    if parallel:
-        n_cores = viz_utils.get_cpu_processes()
-        print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
-
-        # with multiprocessing.Pool(processes=n_cores) as pool:
-        #     pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
-
-        with parallel_config(backend='threading', n_jobs=n_cores):
-            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, sic_data) for i_p3 in dt_idx_p3)
-
-    else: # serially
-        for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
-            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
+    return outdir_with_date, p3_data, g3_data, dt_idx_p3
 
 
-def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
+def make_figures(outdir, p3_data, g3_data, i_p3):
     """ Parallelized """
 
     p3_time = p3_data['datetime'][i_p3]
@@ -603,7 +583,11 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data):
             ax0.imshow(blue_marble_imgs[key], extent=viz_utils.blue_marble_info[key], transform=ccrs_geog, zorder=3)
 
     # plot sea ice concentration
-    if len(sic_data) > 0:
+    if isinstance(sic_data, joblib.memory.MemorizedFunc):
+        sic_dat = sic_data(ymd_str)
+        ax0.pcolormesh(sic_dat['lon'], sic_dat['lat'], sic_dat['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
+
+    elif isinstance(sic_data, dict):
         ax0.pcolormesh(sic_data['lon'], sic_data['lat'], sic_data['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
 
     ax0.set_global()
@@ -712,7 +696,29 @@ if __name__ == '__main__':
         blue_marble_imgs = {}
         land = memory.cache(viz_utils.load_land_feature)
 
-    plot_flight_path(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, parallel=args.parallel)
+    sic_data = {}
+    if args.overlay_sic:
+        # read sea ice data file and lat-lons
+        sic_data = memory.cache(viz_utils.load_sic)
+
+
+    outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
+    # now run
+    if args.parallel:
+        n_cores = viz_utils.get_cpu_processes()
+        print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
+
+        # with multiprocessing.Pool(processes=n_cores) as pool:
+        #     pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
+
+        with parallel_config(backend='threading', n_jobs=n_cores):
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
+
+    else: # serially
+        for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
+
+
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
