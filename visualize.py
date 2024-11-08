@@ -410,7 +410,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     # whichever one is out of bounds will not be plotted within the inset
 
     # set internal extent to prevent size zoom out issues
-    internal_extent = [inset_extent[0] + 2, inset_extent[1] - 2, inset_extent[2] + 0.25, inset_extent[3] - 0.25]
+    internal_extent = [inset_extent[0] + 1.5, inset_extent[1] - 1.5, inset_extent[2] + 0.2, inset_extent[3] - 0.2]
 
     plot_p3 = False
     if (internal_extent[0] < p3_data['Longitude'][i_p3] < internal_extent[1]) and (internal_extent[2] < p3_data['Latitude'][i_p3] < internal_extent[3]):
@@ -420,7 +420,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
     if len(g3_data) > 0:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
 
-        if (internal_extent[0] < g3_data['Longitude'][i_g3] < internal_extent[1]) and (internal_extent[2] < p3_data['Latitude'][i_g3] < internal_extent[3]):
+        if (internal_extent[0] < g3_data['Longitude'][i_g3] < internal_extent[1]) and (internal_extent[2] < g3_data['Latitude'][i_g3] < internal_extent[3]):
             plot_g3 = True
 
     if (not plot_p3) and (not plot_g3): # no need to plot
