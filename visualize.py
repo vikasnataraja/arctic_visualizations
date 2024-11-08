@@ -20,6 +20,9 @@ from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 
+import joblib
+from joblib import Memory, delayed, Parallel, parallel_config
+
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
@@ -74,6 +77,9 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
 
         elif isinstance(land, np.ndarray): # show pre-loaded array, for serialized runs
             ax.imshow(land, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
+
+        elif isinstance(land, joblib.memory.MemorizedFunc):
+            ax.imshow(land('natural'), extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
 
 
     if coastline:
@@ -532,8 +538,11 @@ def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, parallel, dt):
         n_cores = viz_utils.get_cpu_processes()
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
-        with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
+        # with multiprocessing.Pool(processes=n_cores) as pool:
+        #     pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
+
+        with parallel_config(backend='threading', n_jobs=n_cores):
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, sic_data) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
@@ -655,6 +664,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--iwg_dir', type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
     parser.add_argument('--outdir',  type=str, help='Path to directory where the images will be written to')
+    parser.add_argument('--cache_dir', type=str, default='./', help='Path to a directory where cache will be stored')
     parser.add_argument('--date',    type=str, help='Date for which data will be visualized')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
@@ -690,6 +700,9 @@ if __name__ == '__main__':
     # get dates and add a print statement
     ymd, month = report_p3_dates(df_p3)
 
+    # create joblib memory cache
+    memory = Memory(args.cache_dir, verbose=0, mmap_mode='r')
+
     ############### load blue marble imagery into a dictionary ###############
     if args.underlay_blue_marble is not None:
         blue_marble_imgs = viz_utils.load_blue_marble_imagery(args.underlay_blue_marble, month)
@@ -697,7 +710,7 @@ if __name__ == '__main__':
 
     else: # use other land features instead
         blue_marble_imgs = {}
-        land = viz_utils.load_land_feature(type='natural')
+        land = memory.cache(viz_utils.load_land_feature)
 
     plot_flight_path(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, parallel=args.parallel)
     exec_stop_dt = datetime.datetime.now() # to time sdown
