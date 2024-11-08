@@ -706,6 +706,7 @@ if __name__ == '__main__':
     # now run
     if args.parallel:
         n_cores = viz_utils.get_cpu_processes()
+        n_cores = min([24, n_cores]) # limit to 24 due to matplotlib
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         # with multiprocessing.Pool(processes=n_cores) as pool:
@@ -716,7 +717,7 @@ if __name__ == '__main__':
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
-            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data)
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3)
 
 
     exec_stop_dt = datetime.datetime.now() # to time sdown
