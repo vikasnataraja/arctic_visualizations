@@ -695,12 +695,12 @@ if __name__ == '__main__':
 
     else: # use other land features instead
         blue_marble_imgs = {}
-        land = viz_utils.load_land_feature
+        land = viz_utils.load_land_feature('natural')
 
     sic_data = {}
     if args.overlay_sic:
         # read sea ice data file and lat-lons
-        sic_data = viz_utils.load_sic
+        sic_data = viz_utils.load_sic(ymd)
 
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
