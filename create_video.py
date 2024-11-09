@@ -1,3 +1,15 @@
+"""
+create_video.py
+
+This script generates MP4 video files using ffmpeg. Note that `create_video_metadata.txt` must exist within each sub-directory. This text file can be created by running ffmpeg_txt.py
+
+CLI Args:
+    --fdir : str
+        Top-level source directory containing subdirectories with video metadata files.
+
+Example:
+    python ffmpeg_txt.py --fdir /path/to/source --frame_rate 0.5 --skip dir1 dir2
+"""
 import os
 import sys
 import datetime
@@ -11,11 +23,23 @@ if __name__ == "__main__":
     parser = ArgumentParser(prog='create_video')
     parser.add_argument('--fdir', type=str, metavar='',
                         help='Top-level source directory\n')
+    parser.add_argument('--skip', nargs='+', type=str, metavar='', default=None,
+                        help='Names of the directories to skip. By default, no directories are skipped.')
     args = parser.parse_args()
+
+    if args.skip is None:
+        skip_dirs = []
+
+    else:
+        skip_dirs = args.skip
 
     subs = sorted([f for f in os.listdir(args.fdir) if os.path.isdir(os.path.join(args.fdir, f))])
 
     for sub in subs:
+
+        if sub in skip_dirs:
+            print("Message [create_video]: Skipping {}...".format(sub))
+            continue
 
         mp4name = os.path.join(args.fdir, sub) + '.mp4'
 

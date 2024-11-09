@@ -7,30 +7,42 @@ import matplotlib
 import multiprocessing
 import cartopy
 import numpy as np
+from tqdm import tqdm
 
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
-from pyhdf.SD import SD, SDC
-
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
+
+import joblib
+from joblib import Memory, delayed, Parallel, parallel_config
 
 from util.plot_util import MPL_STYLE_PATH, sic_cmap, set_plot_fonts
 import util.util as viz_utils
 
+from util.constants import inset_map_settings, flight_date_to_sf_dict, text_bg_colors
+
 import warnings
+import platform
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for plt
+plt.style.use(MPL_STYLE_PATH)
 
 
-def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land='topo', y_fontcolor='black'):
+
+if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows')):
+    matplotlib.use('Agg') # for supercomputer only
+
+
+def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land=None, y_fontcolor='black', zorders={'land': 0, 'ocean': 1, 'coastline': 2, 'gridlines': 2}):
     """
     Adds ancillary features to the axis.
     """
@@ -53,26 +65,29 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         colors = {'ocean':'aliceblue', 'land':'#fcf4e8', 'coastline':'black', 'title':'black', 'background':'white'}
 
     if ocean:
-        ax.add_feature(cartopy.feature.OCEAN.with_scale('50m'), zorder=1, facecolor=colors['ocean'], edgecolor='none')
+        ax.add_feature(cartopy.feature.OCEAN.with_scale('10m'), zorder=zorders['ocean'], facecolor=colors['ocean'], edgecolor='none')
 
     if land is not None:
+        if ((isinstance(land, bool)) and (land)) or ((isinstance(land, str)) and (land.lower() == 'default')): #land=True or land = 'default'
+            ax.add_feature(cartopy.feature.LAND.with_scale('10m'), zorder=zorders['land'], facecolor=colors['land'], edgecolor='none')
 
-        if land == 'topo' or land == 'hypso':
-            ax.imshow(land_tiff_hypsometric, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+        elif (isinstance(land, str)) and (land.lower() in ['topo', 'natural', 'hypso']): # load and then show, made for parallel non-sharing
+            land_tiff = viz_utils.load_land_feature(land)
+            ax.imshow(land_tiff, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
 
-        # TODO: Find a better way to pre-load this to avoid re-loading at every call
-        elif land == 'natural':
-            ax.imshow(land_tiff_natural, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=0)
+        elif isinstance(land, np.ndarray): # show pre-loaded array, for serialized runs
+            ax.imshow(land, extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
 
-        else:
-            ax.add_feature(cartopy.feature.LAND.with_scale('50m'), zorder=0, facecolor=colors['land'], edgecolor='none')
+        elif isinstance(land, joblib.memory.MemorizedFunc):
+            ax.imshow(land('natural'), extent=[-180, 180, -90, 90], transform=ccrs_data, zorder=zorders['land'])
+
 
     if coastline:
-        ax.add_feature(cartopy.feature.COASTLINE.with_scale('50m'), zorder=2, edgecolor=colors['coastline'], linewidth=1, alpha=1)
+        ax.add_feature(cartopy.feature.COASTLINE.with_scale('10m'), zorder=zorders['coastline'], edgecolor=colors['coastline'], linewidth=1, alpha=1)
 
     if gridlines:
         gl = ax.gridlines(linewidth=1.5, color='darkgray',
-                    draw_labels=True, zorder=2, alpha=0.75, linestyle=(0, (1, 1)),
+                    draw_labels=True, zorder=zorders['gridlines'], alpha=0.75, linestyle=(0, (1, 1)),
                     x_inline=False, y_inline=True, crs=ccrs_data)
 
         gl.xformatter = LongitudeFormatter()
@@ -98,8 +113,15 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
 def df_doy_to_dt(doy_seconds):
     doy, seconds = doy_seconds.split('_')
     year_doy = '2024' + '_' + doy
-    init_dt = datetime.datetime.strptime(year_doy, "%Y_%j")
-    actual_dt = init_dt + datetime.timedelta(seconds=int(seconds))
+    try:
+        init_dt = datetime.datetime.strptime(year_doy, "%Y_%j")
+        actual_dt = init_dt + datetime.timedelta(seconds=int(seconds))
+
+    except Exception as err: #TODO: Change this to a class to fix this issue permanently
+        print(err)
+        init_dt = datetime.datetime(2024, 8, 1) # temporary fix
+        actual_dt = init_dt + datetime.timedelta(seconds=1e4)
+
     return actual_dt
 
 def df_timestamp_to_dt(timestamp):
@@ -238,7 +260,6 @@ def read_g3_iwg(fname, mts=False):
         return df
 
 
-
 def report_memory_usage(arr):
     byte_usage = arr.nbytes
     if byte_usage < 1024:
@@ -281,11 +302,92 @@ def get_time_indices(df, dt):
 
     return dt_idx
 
+
 def get_closest_datetime(dt, df_secondary):
+
     dt_list = list(df_secondary['datetime'])
+    sample_time = dt_list[0]
+    if isinstance(sample_time, pd.Timestamp):
+        dt_list = [i.to_pydatetime() for i in dt_list]
+
+    elif isinstance(sample_time, np.datetime64):
+        dt_list = [np_to_python_datetime(i) for i in dt_list]
+
     closest_dt = min(dt_list, key=lambda d: abs(d - dt))
-    closest_dt_idx = df_secondary[df_secondary['datetime'] == closest_dt].index[0]
+    closest_dt_idx = dt_list.index(closest_dt)
     return closest_dt, closest_dt_idx
+
+
+def report_p3_dates(df_p3):
+    # use second index (not first in case there was a misread header) to use as reference date
+    p3_start_dt = df_p3['datetime'].iloc[1].to_pydatetime()
+    p3_end_dt   = df_p3['datetime'].iloc[len(df_p3) - 1].to_pydatetime()
+    p3_flight_duration = viz_utils.format_time((p3_end_dt - p3_start_dt).total_seconds(), format='string')
+    ymd = p3_start_dt.strftime('%Y%m%d')
+    month = p3_start_dt.strftime('%m')
+    # report times
+    print('Message [report_p3_dates]: P-3 flight: {} to {}, total duration = {}'.format(p3_start_dt.strftime('%Y-%m-%d_%H%MZ'), p3_end_dt.strftime('%Y-%m-%d_%H%MZ'), p3_flight_duration))
+
+    return ymd, month
+
+
+def report_g3_dates(df_g3):
+    # report times
+    g3_start_dt = df_g3['datetime'].iloc[1].to_pydatetime()
+    g3_end_dt   = df_g3['datetime'].iloc[len(df_g3) - 1].to_pydatetime()
+    g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
+    print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+
+
+def minimize_df(df, mode):
+    """only keep the columns we need since it is a large dataset"""
+
+    if df is None:
+        return None
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
+        if len(df) > 1e4:
+            df = df[::10] # reduces by a factor of 10
+    else:
+        keep_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
+
+    df = df[keep_cols]
+    return df
+
+
+def np_to_python_datetime(date):
+    """
+    Converts a numpy datetime64 object to a python datetime object
+    Input:
+      date - a np.datetime64 object
+    Output:
+      date - a python datetime object
+    """
+    timestamp = ((date - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's'))
+    py_date   = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    py_date   = py_date.replace(tzinfo=None) # so that timedelta does not raise an error
+    return py_date
+
+def create_dictionary(df, img, mode):
+
+    data = {}
+    if df is None:
+        return data
+
+    if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
+        keep_cols = ['Latitude', 'Longitude', 'True_Heading', 'Track_Angle', 'datetime']
+    else:
+        keep_cols = ['Latitude', 'Longitude', 'True_Hdg',     'Track',       'datetime']
+
+    for column in keep_cols:
+        data[column] = df[column].values
+
+    # also add image (Pillow Image object)
+    data['img'] = img
+    # data['img_shape'] = np.array(img).shape
+
+    return data
 
 
 def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
@@ -299,152 +401,215 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
 
+def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, width='75%', height='60%'):
+    """ Add inset to existing parent axis map"""
+
+    p3_time = p3_data['datetime'][i_p3]
+
+    if isinstance(p3_time, pd.Timestamp):
+        p3_time = p3_time.to_pydatetime()
+
+    elif isinstance(p3_time, np.datetime64):
+        p3_time = np_to_python_datetime(p3_time)
+
+    # only add the inset if either the P-3 or the G-III are within the region
+    # whichever one is out of bounds will not be plotted within the inset
+
+    # set internal extent to prevent size zoom out issues
+    internal_extent = [inset_extent[0] + 1.5, inset_extent[1] - 1.5, inset_extent[2] + 0.2, inset_extent[3] - 0.2]
+
+    plot_p3 = False
+    if (internal_extent[0] < p3_data['Longitude'][i_p3] < internal_extent[1]) and (internal_extent[2] < p3_data['Latitude'][i_p3] < internal_extent[3]):
+        plot_p3 = True
+
+    plot_g3 = False
+    if len(g3_data) > 0:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+
+        if (internal_extent[0] < g3_data['Longitude'][i_g3] < internal_extent[1]) and (internal_extent[2] < g3_data['Latitude'][i_g3] < internal_extent[3]):
+            plot_g3 = True
+
+    if (not plot_p3) and (not plot_g3): # no need to plot
+        return 0
 
 
-def plot_flight_path(df_p3, df_g3, outdir, overlay_sic, underlay_blue_marble, parallel, dt=5):
+    # load satellite params
+    sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd=p3_time.strftime('%Y%m%d'), mode='TrueColor')
+    xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_nearside)
 
-    # p3 image graphic to be used as scatter marker
-    img_p3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/p3_red_transparent.png'))
-    img_p3 = img_p3.resize((int(20*1.2), 20))
+    # create the inset axis
+    axins = inset_axes(ax_parent, width=width, height=height,
+                       bbox_to_anchor=bbox_to_anchor,
+                       bbox_transform=ax_parent.transAxes,
+                       axes_class=cartopy.mpl.geoaxes.GeoAxes,
+                       axes_kwargs=dict(projection=ccrs_nearside)
+                      )
+
+    # Add land, state borders, coastline, and country borders to inset map
+    add_ancillary(axins, cartopy_black=True, coastline=True, land=None, ocean=True, gridlines=False, zorders={'ocean': 0, 'coastline': 2})
+
+    # add satellite image
+    # axins.imshow(sat_img.filled(np.nan), extent=xy_extent_projection, transform=ccrs_projection, zorder=1)
+    axins.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_nearside, zorder=1)
+
+    # now plot inside
+    if plot_p3:
+        img_p3 = p3_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        axins.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='cyan', alpha=0.75, zorder=5)
+        add_aircraft_graphic(axins, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
+
+    # now G-III if needed
+    if plot_g3:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+
+        img_g3 = g3_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        axins.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        axins.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
+        add_aircraft_graphic(axins, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
+    axins.set_extent(inset_extent, ccrs_geog)
+
+    # change border colors and width
+    for spine in axins.spines.values():
+        spine.set_edgecolor('black')
+        spine.set_linewidth(2)
+
+    # add connectors from main map to inset
+    _, connectors = ax_parent.indicate_inset_zoom(axins, edgecolor="black", linewidth=2, alpha=1, transform=ax_parent.transData)
+
+    # highlight only a couple of connectors
+    # 0: bottom left corner, 1: top left corner, 2: bottom right corner, 3: top right corner
+    for i in np.arange(4):
+        if i in inset_map_settings[p3_time.strftime('%Y%m%d')]['connectors']:
+            connectors[i].set_visible(True)
+            connectors[i].set_linewidth(2)
+        else:
+            connectors[i].set_visible(False)
+    return 1
+
+
+def prepare_data(df_p3, df_g3, outdir, dt):
+
+    df_p3 = minimize_df(df_p3, 'P3')
+    df_g3 = minimize_df(df_g3, 'G3')
 
     if df_g3 is not None:
-        # G-III image graphic to be used as scatter marker
-        img_g3 = Image.open(os.path.join(viz_utils.parent_dir, 'data/assets/giii_blue_transparent.png'))
-        img_g3 = img_g3.resize((int(20*1.2), 20))
-
+        print('Message [prepare_data]: # of samples\nP-3   = {}\nG-III = {}'.format(len(df_p3), len(df_g3)))
     else:
-        img_g3 = None # to prevent errors
-
+        print('Message [prepare_data]: # of samples\nP-3   = {}\nG-III = 0'.format(len(df_p3)))
 
     dt_idx_p3 = get_time_indices(df_p3, dt) # P3 data sampled every dt
-    # dt_idx_g3 = get_time_indices(df_g3, dt) # g3 data sampled every dt
-    print('{} time steps will be visualized'.format(dt_idx_p3.size))
+    print('Message [prepare_data]: {} time steps will be visualized'.format(dt_idx_p3.size))
 
-    # use second index (not first in case there was an error) to use as reference date
-    flight_path_dt = df_p3['datetime'][1].to_pydatetime()
-    ymd = flight_path_dt.strftime('%Y%m%d')
-    month = flight_path_dt.strftime('%m')
-
-    # now for the extras
-    if overlay_sic:
-        # read sea ice data file and lat-lons
-        fsic = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/{}/asi-AMSR2-n3125-{}-v5.4.hdf'.format(ymd, ymd)), SDC.READ)
-        fgeo = SD(os.path.join(viz_utils.parent_dir, 'data/sic_amsr2_bremen/LongitudeLatitudeGrid-n3125-ArcticOcean.hdf'), SDC.READ)
-
-        # AMSR2 Sea Ice Concentration
-        sic = fsic.select('ASI Ice Concentration')[:]
-        lon = fgeo.select('Longitudes')[:]
-        lat = fgeo.select('Latitudes')[:]
-        # lon = change_range(lon, -180, 180) # change from 0-360 to -180 to 180
-
-        # mask nans and non-positive sic
-        sic = np.ma.masked_where(np.isnan(sic) | (sic <= 0), sic)
-        fsic.end()
-        fgeo.end()
-
-    else:
-        lon, lat, sic = None, None, None # to prevent errors during parallelization
-
-    blue_marble_imgs = {}
-    if underlay_blue_marble is not None:
-        for type in underlay_blue_marble:
-            if 'WORLD' == type.upper(): # filename and image size is different for world
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x10800.png'.format(month, month)))
-
-            else:
-                blue_marble_imgs[type.upper()] = plt.imread(os.path.join(viz_utils.parent_dir, 'data/blue_marble/2004_{}/world.topo.bathy.2004{}.3x21600x21600.{}.png'.format(month, month, type.upper())))
+    # get dates and print a statement
+    ymd, month = report_p3_dates(df_p3)
 
     # save images in dirs with dates
     outdir_with_date = os.path.join(outdir, ymd)
     if not os.path.isdir(outdir_with_date):
         os.makedirs(outdir_with_date)
 
-    if parallel:
-        p_args = create_args_parallel(outdir_with_date, df_p3, dt_idx_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
-        pool = multiprocessing.Pool(processes=viz_utils.get_cpu_processes())
-        pool.starmap(make_figures, p_args)
-        pool.close()
+    img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25) # P-3 image graphic to be used as scatter marker
+
+    if df_g3 is not None:
+        img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20) # G-III image graphic to be used as scatter marker
+        report_g3_dates(df_g3)
 
     else:
-        for count, i_p3 in enumerate(dt_idx_p3):
-            make_figures(outdir_with_date, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic)
+        img_g3 = None # to prevent errors
+
+    # make dataframes into dictionaries
+    p3_data = create_dictionary(df_p3, img_p3, 'P3')
+    g3_data = create_dictionary(df_g3, img_g3, 'G3')
+
+    return outdir_with_date, p3_data, g3_data, dt_idx_p3
 
 
-def make_figures(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
+def make_figures(outdir, p3_data, g3_data, i_p3):
     """ Parallelized """
 
-    p3_time = df_p3['datetime'][i_p3]
+    p3_time = p3_data['datetime'][i_p3]
 
-    if df_g3 is not None:
-        _, i_g3 = get_closest_datetime(p3_time, df_g3)
+    if isinstance(p3_time, pd.Timestamp):
+        p3_time = p3_time.to_pydatetime()
 
-    p3_time_str = p3_time.to_pydatetime().strftime('%d %B, %Y at %H:%MZ')
-    fname_dt_str = p3_time.to_pydatetime().strftime('%Y%m%d_%H%MZ') # for image filename
-    title_str = 'NASA ARCSIX - Flight Path - ' + p3_time_str
-    credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
-                  'Visualization by Vikas Nataraja'
+    elif isinstance(p3_time, np.datetime64):
+        p3_time = np_to_python_datetime(p3_time)
 
-    ####################################################################################
-    fig = plt.figure(figsize=(20, 20))
-    plt.style.use(MPL_STYLE_PATH)
-    gs = GridSpec(1, 1, figure=fig)
-    ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
-    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land='natural', ocean=True, gridlines=False)
-
-    # first P3
-    # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-    ax0.plot(df_p3['Longitude'][:i_p3], df_p3['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=4)
-    add_aircraft_graphic(ax0, img_p3, df_p3['True_Heading'][i_p3], df_p3['Longitude'][i_p3], df_p3['Latitude'][i_p3], ccrs_geog, zorder=4)
-    ax0.plot(df_p3['Longitude'][i_p3:], df_p3['Latitude'][i_p3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
-
-    # now G-III if needed
-    if df_g3 is not None:
-        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
-        ax0.plot(df_g3['Longitude'][:i_g3], df_g3['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=4)
-        add_aircraft_graphic(ax0, img_g3, df_g3['True_Hdg'][i_g3], df_g3['Longitude'][i_g3], df_g3['Latitude'][i_g3], ccrs_geog, zorder=4)
-        ax0.plot(df_g3['Longitude'][i_g3:], df_g3['Latitude'][i_g3:], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
-
-    # plot blue marble images
-    for key in blue_marble_imgs.keys():
-        ax0.imshow(blue_marble_imgs[key], extent=blue_marble_info[key], transform=ccrs_geog, zorder=3)
-
-    # plot sea ice concentration
-    if sic is not None:
-        ax0.pcolormesh(lon, lat, sic, transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3)
-
-    ax0.set_global()
-
-    # add credit text and title
-    # ax0.text(0.03, 0.03, credit_text, style='italic', fontsize=10, ha="left", va="center", ma="center", transform=ax0.transAxes)
-    ax0.set_title(title_str, fontsize=22, fontweight="bold", pad=20)
+    p3_time_str = p3_time.strftime('%H:%MZ')
+    p3_date_str = p3_time.strftime('%d %B, %Y')
+    fname_dt_str = p3_time.strftime('%Y%m%d_%H%MZ') # for image filename
+    ymd_str = p3_time.strftime('%Y%m%d') # for dictionary label for text
 
     fname_out = os.path.join(outdir, fname_dt_str + '.png')
+    if os.path.isfile(fname_out):
+        print('Message [make_figures]: Skipping {} as it already exists.'.format(fname_out))
+        return 0
+
+    title_str = 'NASA ARCSIX - Flight Path'
+    credit_text = 'SIC Data from AMSR2/GCOM-W1 Spreen et al. (2008)\n\n'\
+                  'Visualization by Vikas Nataraja/SSFR Team'
+
+    ####################################################################################
+    # print('Starting to create figure for {}'.format(p3_time_str))
+    fig = plt.figure(figsize=(20, 20))
+    gs = GridSpec(1, 1, figure=fig)
+    ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
+    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land, ocean=True, gridlines=False)
+
+    # first P3
+    img_p3 = p3_data['img']
+    # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+    ax0.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+    ax0.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=5)
+    add_aircraft_graphic(ax0, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
+
+    # now G-III if it exists
+    if len(g3_data) > 0:
+        _, i_g3 = get_closest_datetime(p3_time, g3_data)
+        img_g3 = g3_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        ax0.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
+        add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    # plot blue marble images
+    if len(blue_marble_imgs) > 0:
+        for key in blue_marble_imgs.keys():
+            ax0.imshow(blue_marble_imgs[key], extent=viz_utils.blue_marble_info[key], transform=ccrs_geog, zorder=3)
+
+    # plot sea ice concentration
+    if isinstance(sic_data, joblib.memory.MemorizedFunc):
+        sic_dat = sic_data(ymd_str)
+        ax0.pcolormesh(sic_dat['lon'], sic_dat['lat'], sic_dat['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
+
+    elif isinstance(sic_data, dict):
+        ax0.pcolormesh(sic_data['lon'], sic_data['lat'], sic_data['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
+
+    ax0.set_global()
     fig.set_facecolor('black') # for hyperwall
-    fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
-    print('Saved figure: ', fname_out)
+
+    # Add inset map if within focus region
+    if inset_map_settings[ymd_str]['start'] <= p3_time <= inset_map_settings[ymd_str]['end']:
+
+        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
+
+    # add science flight number as a bbox
+    ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
+
+    # add time
+    ax0.text(0.88, 0.025, '{} at {}'.format(p3_date_str, p3_time_str), fontweight="bold", color='white', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes)
+
     # plt.show()
-    plt.close()
+    fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
+    plt.close(fig)
 
-
-def create_args_parallel(outdir, df_p3, i_p3, img_p3, df_g3, img_g3, blue_marble_imgs, lon, lat, sic):
-    arg_list = []
-    for i in range(len(i_p3)):
-        mini_list = []
-
-        mini_list.append(outdir)
-        mini_list.append(df_p3)
-        mini_list.append(i_p3[i])
-        mini_list.append(img_p3)
-        mini_list.append(df_g3)
-        mini_list.append(img_g3)
-        mini_list.append(blue_marble_imgs)
-        mini_list.append(lon)
-        mini_list.append(lat)
-        mini_list.append(sic)
-
-        arg_list.append(mini_list)
-
-    return arg_list
+    # print('Saved figure: ', fname_out)
+    return 1
 
 def get_filenames(args):
 
@@ -471,41 +636,27 @@ def get_filenames(args):
         print('Must provide `--iwg_dir` to locate the P-3 MetNav IWG File inside the directory.')
         sys.exit()
 
-# blue marble extent
-blue_marble_info = {'WORLD': [-180, 180, -90, 90],
-
-                    'A1': [-180, -90, 0, 90],
-                    'B1': [-90, 0, 0, 90],
-                    'C1': [0, 90, 0, 90],
-                    'D1': [90, 180, 0, 90],
-
-                    'A2': [-180, -90, -90, 0],
-                    'B2': [-90, 0, -90, 0],
-                    'C2': [0, 90, -90, 0],
-                    'D2': [90, 180, -90, 0],
-                   }
-
 
 ccrs_ortho = ccrs.Orthographic(central_longitude=-50, central_latitude=80)
 ccrs_nearside = ccrs.NearsidePerspective(central_longitude=-50, central_latitude=80, satellite_height=500e3)
 ccrs_geog = ccrs.PlateCarree()
 
-# load in land
-land_tiff_hypsometric, land_tiff_natural = viz_utils.load_land_features()
-
 if __name__ == '__main__':
 
     exec_start_dt = datetime.datetime.now() # to time the whole thing
+    multiprocessing.set_start_method('fork')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--iwg_dir', type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
-    parser.add_argument('--outdir',  type=str, help='Path to directory where the images will be written to')
-    parser.add_argument('--date',    type=str, help='Date for which data will be visualized')
+    parser.add_argument('--iwg_dir',   type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
+    parser.add_argument('--outdir',    type=str, help='Path to directory where the images will be written to')
+    parser.add_argument('--cache_dir', type=str, default='./', help='Path to a directory where cache will be stored')
+    parser.add_argument('--date',      type=str, help='Date for which data will be visualized')
+    parser.add_argument('--max_ncores', type=int, default=8, help='Force use of only `max_ncores` cores during processing ')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
                         help='Pass --overlay_sic to overlay sea ice concentration from the day to the plot\n')
-    parser.add_argument('--underlay_blue_marble', action='store_true',
-                        help='Pass --underlay_blue_marble to underlay blue marble imagery\n')
+    parser.add_argument('--underlay_blue_marble', default=None, type=str,
+                        help='Underlay blue marble imagery, one of `world`, `topo`\n')
     parser.add_argument('--dt', default=60, type=int, help='Sampling time interval in minutes i.e., plot every dt minutes.')
 
     args = parser.parse_args()
@@ -515,17 +666,57 @@ if __name__ == '__main__':
     df_p3 = read_p3_iwg(fname=p3_iwg_file, mts=False)
 
     # if G-III file exists, read it, else None
-    if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
-        df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+    if args.date == '20240528': # transit for G-III, skip
+        df_g3 = None
+        print('No G-III track will be plotted for {} since it was a transit day'.format(args.date))
 
     else:
-        df_g3 = None
-        print('No G-III track found for {}'.format(args.date))
+        if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
+            df_g3 = read_g3_iwg(fname=g3_iwg_file, mts=True)
+
+        else:
+            df_g3 = None
+            print('No G-III track found for {}'.format(args.date))
 
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
 
-    plot_flight_path(df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir, overlay_sic=args.overlay_sic, underlay_blue_marble=None, parallel=args.parallel)
+    # get dates and add a print statement
+    ymd, month = report_p3_dates(df_p3)
+
+    # create joblib memory cache
+    memory = Memory(args.cache_dir, verbose=0, mmap_mode='r')
+
+    ############### load blue marble imagery into a dictionary ###############
+    if args.underlay_blue_marble is not None:
+        blue_marble_imgs = viz_utils.load_blue_marble_imagery(args.underlay_blue_marble, month)
+        land = None
+
+    else: # use other land features instead
+        blue_marble_imgs = {}
+        land = memory.cache(viz_utils.load_land_feature)
+
+    sic_data = {}
+    if args.overlay_sic:
+        # read sea ice data file and lat-lons
+        sic_data = memory.cache(viz_utils.load_sic)
+
+    outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
+    # now run
+    if args.parallel:
+        n_cores = viz_utils.get_cpu_processes()
+        n_cores = min([args.max_ncores, n_cores]) # limit to max_ncores due to matplotlib capacity
+        print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
+
+        with parallel_config(backend='threading', n_jobs=n_cores):
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
+
+    else: # serially
+        for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3)
+
+
     exec_stop_dt = datetime.datetime.now() # to time sdown
     exec_total_time = exec_stop_dt - exec_start_dt
     sdown_hrs, sdown_mins, sdown_secs, sdown_millisecs = viz_utils.format_time(exec_total_time.total_seconds())
