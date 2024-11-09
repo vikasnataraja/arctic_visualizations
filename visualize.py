@@ -709,11 +709,11 @@ if __name__ == '__main__':
         n_cores = min([args.max_ncores, n_cores]) # limit to max_ncores due to matplotlib capacity
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
-        with multiprocessing.Pool(processes=n_cores) as pool:
-            pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
+        # with multiprocessing.Pool(processes=n_cores) as pool:
+        #     pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
 
-        # with parallel_config(backend='threading', n_jobs=n_cores):
-        #     Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
+        with parallel_config(backend='multiprocessing', n_jobs=n_cores):
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
