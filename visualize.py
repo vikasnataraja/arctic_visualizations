@@ -701,16 +701,12 @@ if __name__ == '__main__':
         # read sea ice data file and lat-lons
         sic_data = memory.cache(viz_utils.load_sic)
 
-
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
     if args.parallel:
         n_cores = viz_utils.get_cpu_processes()
-        n_cores = min([24, n_cores]) # limit to 24 due to matplotlib
+        n_cores = min([16, n_cores]) # limit to 16 due to matplotlib capacity
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
-
-        # with multiprocessing.Pool(processes=n_cores) as pool:
-        #     pool.starmap(make_figures, [[outdir_with_date, p3_data, g3_data, i_p3, sic_data] for i_p3 in dt_idx_p3])
 
         with parallel_config(backend='threading', n_jobs=n_cores):
             Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
