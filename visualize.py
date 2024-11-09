@@ -646,10 +646,11 @@ if __name__ == '__main__':
     exec_start_dt = datetime.datetime.now() # to time the whole thing
     multiprocessing.set_start_method('fork')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--iwg_dir', type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
-    parser.add_argument('--outdir',  type=str, help='Path to directory where the images will be written to')
+    parser.add_argument('--iwg_dir',   type=str, help='Path to directory containing P-3 and G-III IWG/MetNav files')
+    parser.add_argument('--outdir',    type=str, help='Path to directory where the images will be written to')
     parser.add_argument('--cache_dir', type=str, default='./', help='Path to a directory where cache will be stored')
-    parser.add_argument('--date',    type=str, help='Date for which data will be visualized')
+    parser.add_argument('--date',      type=str, help='Date for which data will be visualized')
+    parser.add_argument('--max_ncores', type=int, default=8, help='Force use of only `max_ncores` cores during processing ')
     parser.add_argument('--parallel', action='store_true',
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
@@ -705,7 +706,7 @@ if __name__ == '__main__':
     # now run
     if args.parallel:
         n_cores = viz_utils.get_cpu_processes()
-        n_cores = min([16, n_cores]) # limit to 16 due to matplotlib capacity
+        n_cores = min([args.max_ncores, n_cores]) # limit to max_ncores due to matplotlib capacity
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
         with parallel_config(backend='threading', n_jobs=n_cores):
