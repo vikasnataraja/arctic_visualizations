@@ -705,7 +705,7 @@ if __name__ == '__main__':
 
         joblib.dump(land, land_filename_memmap)
         del land
-        land = joblib.load(land_filename_memmap, mmap_mode='r')
+        land = joblib.load(land_filename_memmap, mmap_mode='r+')
 
     sic_data = {}
     if args.overlay_sic:
@@ -718,7 +718,7 @@ if __name__ == '__main__':
 
         joblib.dump(sic_data, sic_filename_memmap)
         del sic_data
-        sic_data = joblib.load(sic_filename_memmap, mmap_mode='r')
+        sic_data = joblib.load(sic_filename_memmap, mmap_mode='r+')
 
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
