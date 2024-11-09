@@ -701,7 +701,7 @@ if __name__ == '__main__':
         # dump large land data to a memmap location to speed up processing later on by workers
         land_filename_memmap = os.path.join(args.cache_dir, 'land_memmap')
         if os.path.isfile(land_filename_memmap):
-            land_filename_memmap = os.path.join(args.cache_dir, 'sic_memmap_{}'.format(_today_dt_str))
+            land_filename_memmap = os.path.join(args.cache_dir, 'land_memmap_{}'.format(_today_dt_str))
 
         joblib.dump(land, land_filename_memmap)
         del land
