@@ -686,7 +686,7 @@ if __name__ == '__main__':
     ymd, month = report_p3_dates(df_p3)
 
     # create joblib memory cache
-    memory = Memory(args.cache_dir, verbose=0, mmap_mode='r')
+    # memory = Memory(args.cache_dir, verbose=0, mmap_mode='r')
 
     ############### load blue marble imagery into a dictionary ###############
     if args.underlay_blue_marble is not None:
@@ -695,12 +695,12 @@ if __name__ == '__main__':
 
     else: # use other land features instead
         blue_marble_imgs = {}
-        land = memory.cache(viz_utils.load_land_feature)
+        land = viz_utils.load_land_feature
 
     sic_data = {}
     if args.overlay_sic:
         # read sea ice data file and lat-lons
-        sic_data = memory.cache(viz_utils.load_sic)
+        sic_data = viz_utils.load_sic
 
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
@@ -709,8 +709,11 @@ if __name__ == '__main__':
         n_cores = min([args.max_ncores, n_cores]) # limit to max_ncores due to matplotlib capacity
         print('Message [plot_flight_path]: Processing will be spread across {} cores'.format(n_cores))
 
-        with parallel_config(backend='threading', n_jobs=n_cores):
-            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
+        with multiprocessing.Pool(processes=n_cores) as pool:
+            pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
+
+        # with parallel_config(backend='threading', n_jobs=n_cores):
+        #     Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
