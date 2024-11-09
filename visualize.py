@@ -529,7 +529,7 @@ def prepare_data(df_p3, df_g3, outdir, dt):
     return outdir_with_date, p3_data, g3_data, dt_idx_p3
 
 
-def make_figures(outdir, p3_data, g3_data, i_p3):
+def make_figures(outdir, p3_data, g3_data, i_p3, sic_data, land):
     """ Parallelized """
 
     p3_time = p3_data['datetime'][i_p3]
@@ -696,11 +696,21 @@ if __name__ == '__main__':
     else: # use other land features instead
         blue_marble_imgs = {}
         land = viz_utils.load_land_feature('natural')
+        # dump large land data to a memmap location to speed up processing later on by workers
+        land_filename_memmap = os.path.join(args.cache_dir, 'land_memmap')
+        joblib.dump(land, land_filename_memmap)
+        del land
+        land = joblib.load(land_filename_memmap, mmap_mode='r')
 
     sic_data = {}
     if args.overlay_sic:
         # read sea ice data file and lat-lons
         sic_data = viz_utils.load_sic(ymd)
+        # dump large sic data to a memmap location to speed up processing later on by workers
+        sic_filename_memmap = os.path.join(args.cache_dir, 'sic_memmap')
+        joblib.dump(sic_data, sic_filename_memmap)
+        del sic_data
+        sic_data = joblib.load(sic_filename_memmap, mmap_mode='r')
 
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
@@ -713,11 +723,11 @@ if __name__ == '__main__':
         #     pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
 
         with parallel_config(backend='multiprocessing', n_jobs=n_cores):
-            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3)
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, sic_data, land) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
-            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3)
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data, land)
 
 
     exec_stop_dt = datetime.datetime.now() # to time sdown
