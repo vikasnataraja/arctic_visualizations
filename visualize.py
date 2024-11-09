@@ -36,7 +36,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 set_plot_fonts(plt, 'sans-serif', 'Libre Franklin') # set font prop in place for plt
 plt.style.use(MPL_STYLE_PATH)
 
-
+_today_dt    = datetime.datetime.now(datetime.timezone.utc)
+_today_dt    = _today_dt.replace(tzinfo=None) # so that timedelta does not raise an error
+_today_dt_str = _today_dt.strftime('%Y%m%d_%H%M%S')
 
 if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows')):
     matplotlib.use('Agg') # for supercomputer only
@@ -698,6 +700,9 @@ if __name__ == '__main__':
         land = viz_utils.load_land_feature('natural')
         # dump large land data to a memmap location to speed up processing later on by workers
         land_filename_memmap = os.path.join(args.cache_dir, 'land_memmap')
+        if os.path.isfile(land_filename_memmap):
+            land_filename_memmap = os.path.join(args.cache_dir, 'sic_memmap_{}'.format(_today_dt_str))
+
         joblib.dump(land, land_filename_memmap)
         del land
         land = joblib.load(land_filename_memmap, mmap_mode='r')
@@ -708,6 +713,9 @@ if __name__ == '__main__':
         sic_data = viz_utils.load_sic(ymd)
         # dump large sic data to a memmap location to speed up processing later on by workers
         sic_filename_memmap = os.path.join(args.cache_dir, 'sic_memmap')
+        if os.path.isfile(sic_filename_memmap):
+            sic_filename_memmap = os.path.join(args.cache_dir, 'sic_memmap_{}'.format(_today_dt_str))
+
         joblib.dump(sic_data, sic_filename_memmap)
         del sic_data
         sic_data = joblib.load(sic_filename_memmap, mmap_mode='r')
