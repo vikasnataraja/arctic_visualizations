@@ -687,10 +687,7 @@ if __name__ == '__main__':
     # get dates and add a print statement
     ymd, month = report_p3_dates(df_p3)
 
-    # create joblib memory cache
-    # memory = Memory(args.cache_dir, verbose=0, mmap_mode='r')
-
-    ############### load blue marble imagery into a dictionary ###############
+    # load blue marble imagery into a dictionary
     if args.underlay_blue_marble is not None:
         blue_marble_imgs = viz_utils.load_blue_marble_imagery(args.underlay_blue_marble, month)
         land = None
