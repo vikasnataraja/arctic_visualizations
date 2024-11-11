@@ -480,11 +480,11 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_t
             if (internal_region.sum() == 0) or (blons[-1] <= internal_extent[0]) or (blons[-1] >= internal_extent[1]) or (blats[-1] <= internal_extent[2]) or (blats[-1] >= internal_extent[3]):
                 continue
 
-            axins.plot(buoy_data[key]['longitude'][internal_region], buoy_data[key]['latitude'][internal_region], transform=ccrs_geog, color='magenta', alpha=0.4, zorder=4, linewidth=1.5)
+            axins.plot(blons[internal_region], blats[internal_region], transform=ccrs_geog, color='magenta', alpha=0.4, zorder=4, linewidth=1.5)
 
 
-            axins.scatter(buoy_data[key]['longitude'][-1], buoy_data[key]['latitude'][-1], transform=ccrs_geog, color='magenta', alpha=0.8, marker='*', zorder=4)
-            axins.text(buoy_data[key]['longitude'][-1] + 1.5, buoy_data[key]['latitude'][-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
+            axins.scatter(blons[-1], blats[-1], transform=ccrs_geog, color='magenta', alpha=0.8, marker='*', zorder=4)
+            axins.text(blons[-1] + 1.5, blats[-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
 
     # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
     axins.set_extent(inset_extent, ccrs_geog)
