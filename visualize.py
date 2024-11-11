@@ -313,7 +313,7 @@ def get_closest_datetime(dt, df_secondary):
         dt_list = [i.to_pydatetime() for i in dt_list]
 
     elif isinstance(sample_time, np.datetime64):
-        dt_list = [np_to_python_datetime(i) for i in dt_list]
+        dt_list = [viz_utils.np_to_python_datetime(i) for i in dt_list]
 
     closest_dt = min(dt_list, key=lambda d: abs(d - dt))
     closest_dt_idx = dt_list.index(closest_dt)
@@ -403,7 +403,7 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
 
-def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, width='75%', height='60%'):
+def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_to_anchor, width='75%', height='60%'):
     """ Add inset to existing parent axis map"""
 
     p3_time = p3_data['datetime'][i_p3]
@@ -412,7 +412,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
         p3_time = p3_time.to_pydatetime()
 
     elif isinstance(p3_time, np.datetime64):
-        p3_time = np_to_python_datetime(p3_time)
+        p3_time = viz_utils.np_to_python_datetime(p3_time)
 
     # only add the inset if either the P-3 or the G-III are within the region
     # whichever one is out of bounds will not be plotted within the inset
@@ -433,7 +433,6 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
 
     if (not plot_p3) and (not plot_g3): # no need to plot
         return 0
-
 
     # load satellite params
     sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd=p3_time.strftime('%Y%m%d'), mode='TrueColor')
@@ -471,6 +470,20 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, bbox_to_anchor, w
         axins.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
         axins.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
         add_aircraft_graphic(axins, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    if len(buoy_data) > 0:
+
+        for i, key in enumerate(buoy_data.keys()):
+            blons, blats = buoy_data[key]['longitude'], buoy_data[key]['latitude']
+            internal_region = (internal_extent[0] < blons < internal_extent[1]) and (internal_extent[2] < blats < internal_extent[3])
+            if (internal_region.sum() == 0) or (blons[-1] <= internal_extent[0]) or (blons[-1] >= internal_extent[1]) or (blats[-1] <= internal_extent[2]) or (blats[-1] >= internal_extent[3]):
+                continue
+
+            axins.plot(buoy_data[key]['longitude'][internal_region], buoy_data[key]['latitude'][internal_region], transform=ccrs_geog, color='magenta', alpha=0.4, zorder=4, linewidth=1.5)
+
+
+            axins.scatter(buoy_data[key]['longitude'][-1], buoy_data[key]['latitude'][-1], transform=ccrs_geog, color='magenta', alpha=0.8, marker='*', zorder=4)
+            axins.text(buoy_data[key]['longitude'][-1] + 1.5, buoy_data[key]['latitude'][-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
 
     # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
     axins.set_extent(inset_extent, ccrs_geog)
@@ -531,7 +544,7 @@ def prepare_data(df_p3, df_g3, outdir, dt):
     return outdir_with_date, p3_data, g3_data, dt_idx_p3
 
 
-def make_figures(outdir, p3_data, g3_data, i_p3, sic_data, land):
+def make_figures(outdir, p3_data, g3_data, i_p3, buoy_data, sic_data, land):
     """ Parallelized """
 
     p3_time = p3_data['datetime'][i_p3]
@@ -592,13 +605,20 @@ def make_figures(outdir, p3_data, g3_data, i_p3, sic_data, land):
     elif isinstance(sic_data, dict):
         ax0.pcolormesh(sic_data['lon'], sic_data['lat'], sic_data['sic'], transform=ccrs_geog, cmap=sic_cmap, shading='nearest', zorder=3, alpha=1)
 
+    # plot buoys
+    if len(buoy_data) > 0:
+        for key in buoy_data.keys():
+            ax0.plot(buoy_data[key]['longitude'], buoy_data[key]['latitude'], transform=ccrs_geog, color='magenta', alpha=0.4, zorder=4, linewidth=1.5)
+            ax0.scatter(buoy_data[key]['longitude'][-1], buoy_data[key]['latitude'][-1], transform=ccrs_geog, color='magenta', alpha=0.8, marker='*', zorder=4)
+            ax0.text(buoy_data[key]['longitude'][-1] + 1.5, buoy_data[key]['latitude'][-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
+
     ax0.set_global()
     fig.set_facecolor('black') # for hyperwall
 
     # Add inset map if within focus region
     if inset_map_settings[ymd_str]['start'] <= p3_time <= inset_map_settings[ymd_str]['end']:
 
-        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
+        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, buoy_data=buoy_data, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
 
     # add science flight number as a bbox
     ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
@@ -657,6 +677,8 @@ if __name__ == '__main__':
                         help='Pass --parallel to enable parallelization of processing spread over multiple CPUs.\n')
     parser.add_argument('--overlay_sic', action='store_true',
                         help='Pass --overlay_sic to overlay sea ice concentration from the day to the plot\n')
+    parser.add_argument('--add_buoys', action='store_true',
+                        help='Pass --add_buoys to plot buoy locations until `date` if available.\n')
     parser.add_argument('--underlay_blue_marble', default=None, type=str,
                         help='Underlay blue marble imagery, one of `world`, `topo`\n')
     parser.add_argument('--dt', default=60, type=int, help='Sampling time interval in minutes i.e., plot every dt minutes.')
@@ -717,6 +739,11 @@ if __name__ == '__main__':
         del sic_data
         sic_data = joblib.load(sic_filename_memmap, mmap_mode='r+')
 
+    buoy_data = {}
+    if args.add_buoys:
+        year0, month0, date0 = viz_utils.get_ymd_dt(ymd)
+        buoy_data = viz_utils.read_all_buoys(end_dt=datetime.datetime(year0, month0, date0, 14, 0)) # cut off at 1400Z
+
     outdir_with_date, p3_data, g3_data, dt_idx_p3 = prepare_data(df_p3=df_p3, df_g3=df_g3, dt=args.dt, outdir=args.outdir)
     # now run
     if args.parallel:
@@ -728,11 +755,11 @@ if __name__ == '__main__':
         #     pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
 
         with parallel_config(backend='multiprocessing', n_jobs=n_cores):
-            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, sic_data, land) for i_p3 in dt_idx_p3)
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, buoy_data, sic_data, land) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
-            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, sic_data, land)
+            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, buoy_data, sic_data, land)
 
 
     exec_stop_dt = datetime.datetime.now() # to time sdown

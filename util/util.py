@@ -1,4 +1,7 @@
 import os
+import time
+import datetime
+import pandas as pd
 import platform
 import rasterio
 import multiprocessing
@@ -72,6 +75,64 @@ satellite_fnames = {
 }
 
 parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
+
+buoy_info = {
+             'J': os.path.join(parent_dir, 'data/buoys/SIMB3_2024J.csv'),
+             'L': os.path.join(parent_dir, 'data/buoys/SIMB3_2024L.csv'),
+             'N': os.path.join(parent_dir, 'data/buoys/SIMB3_2024N.csv'),
+             'O': os.path.join(parent_dir, 'data/buoys/SIMB3_2024O.csv'),
+             'P': os.path.join(parent_dir, 'data/buoys/SIMB3_2024P.csv'),
+             'Q': os.path.join(parent_dir, 'data/buoys/SIMB3_2024Q.csv'),
+             'R': os.path.join(parent_dir, 'data/buoys/SIMB3_2024R.csv')
+}
+
+def read_all_buoys(end_dt=None):
+    buoy_data = {}
+    for buoy_name in buoy_info.keys():
+        df = pd.read_csv(buoy_info[buoy_name])
+        df['time_stamp'] = df['time_stamp'].apply(lambda x: datetime.datetime.fromtimestamp(time.mktime(time.gmtime(x))))
+        if end_dt is None:
+            end_dt = df['time_stamp'].iloc[-1]
+        else:
+            last_available_dt = df['time_stamp'].iloc[-1]
+            if last_available_dt < end_dt:
+                print('Message [read_all_buoys]: Data for Buoy {} not available past {}'.format(buoy_name, last_available_dt.strftime('%Y%m%d_%H:%MZ')))
+                continue
+
+        start_dt = df['time_stamp'].iloc[0]
+        time_logic = (df['time_stamp'] >= start_dt) & (df['time_stamp'] <= end_dt)
+        df = df[time_logic].reset_index(drop=True)
+
+        # [-180, 180] format for longitudes
+        df.loc[df['longitude'] > 180, 'longitude'] -= 360.0
+        # drop rows that have erroneous or irrelevant information
+        # df = df.drop(df[df.longitude < 70].index)
+        df = df.drop(df[(df.latitude < 75) | (df.latitude > 89) | (df.longitude > 20) | (df.longitude < -100)].index)
+        df = df.dropna(subset=['time_stamp', 'longitude', 'latitude'])
+        df = df.reset_index(drop=True)
+
+        # keep only geolocation and time
+        df = df[['time_stamp', 'longitude', 'latitude']]
+
+        # add to dict
+        buoy_data[buoy_name] = {}
+
+        # convert df times to py times
+        times = list(df['time_stamp'])
+        sample_time = times[0]
+        if isinstance(sample_time, pd.Timestamp):
+            times = [i.to_pydatetime() for i in times]
+
+        elif isinstance(sample_time, np.datetime64):
+            times = [np_to_python_datetime(i) for i in times]
+
+        buoy_data[buoy_name]['time_stamp'] = times
+        buoy_data[buoy_name]['longitude']  = list(df['longitude'])
+        buoy_data[buoy_name]['latitude']  = list(df['latitude'])
+
+
+    return buoy_data
+
 
 def format_time(total_seconds, format=None):
     """
@@ -210,6 +271,25 @@ def load_aircraft_graphic(mode, width):
 
     img = img.resize((int(width * 1.2), width)) # retain 1.2 aspect ratio
     return img
+
+
+def np_to_python_datetime(date):
+    """
+    Converts a numpy datetime64 object to a python datetime object
+    Input:
+      date - a np.datetime64 object
+    Output:
+      date - a python datetime object
+    """
+    timestamp = ((date - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's'))
+    py_date   = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    py_date   = py_date.replace(tzinfo=None) # so that timedelta does not raise an error
+    return py_date
+
+
+def get_ymd_dt(ymd):
+    dt0 = datetime.datetime.strptime(ymd, '%Y%m%d')
+    return int(dt0.strftime('%Y')), int(dt0.strftime('%m')), int(dt0.strftime('%d'))
 
 
 def transform_extent(extent, source_ccrs, target_ccrs):
