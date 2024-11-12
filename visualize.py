@@ -476,7 +476,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_t
         for i, key in enumerate(buoy_data.keys()):
             blons, blats = buoy_data[key]['longitude'], buoy_data[key]['latitude']
             blons, blats = np.array(blons), np.array(blats)
-            internal_region = (blons > internal_extent[0]) and (blons < internal_extent[1]) and (blats > internal_extent[2]) and (blats < internal_extent[3])
+            internal_region = (blons > internal_extent[0]) & (blons < internal_extent[1]) & (blats > internal_extent[2]) & (blats < internal_extent[3])
             if (internal_region.sum() == 0) or (blons[-1] <= internal_extent[0]) or (blons[-1] >= internal_extent[1]) or (blats[-1] <= internal_extent[2]) or (blats[-1] >= internal_extent[3]):
                 continue
 
