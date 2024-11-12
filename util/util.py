@@ -96,7 +96,7 @@ def read_all_buoys(end_dt=None):
         else:
             last_available_dt = df['time_stamp'].iloc[-1]
             if last_available_dt < end_dt:
-                print('Message [read_all_buoys]: Data for Buoy {} not available past {}'.format(buoy_name, last_available_dt.strftime('%Y%m%d_%H:%MZ')))
+                print('Message [read_all_buoys]: Data for Buoy {} not available past {}'.format(buoy_name, last_available_dt.strftime('%H:%MZ on %Y%m%d')))
                 continue
 
         start_dt = df['time_stamp'].iloc[0]

@@ -484,7 +484,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_t
 
 
             axins.scatter(blons[-1], blats[-1], transform=ccrs_geog, color='magenta', alpha=0.8, marker='*', zorder=4)
-            axins.text(blons[-1] + 1.5, blats[-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
+            axins.text(blons[-1] + 0.75, blats[-1], key, transform=ccrs_geog, color='magenta', alpha=1, fontsize=8, zorder=4)
 
     # Set the lat/lon limits of the inset map [x0, x1, y0, y1]
     axins.set_extent(inset_extent, ccrs_geog)
