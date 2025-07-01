@@ -28,9 +28,14 @@ parent_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file
 # else: # custom matplotlib stylesheet
     # MPL_STYLE_PATH = os.path.join(parent_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
 
-MPL_STYLE_PATH = os.path.join(parent_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
+# parent directory
+sif_sat_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
-def set_plot_fonts(plt, serif_style='sans-serif', font='Libre Franklin'):
+# set matplotlib style
+MPL_STYLE_PATH = os.path.join(sif_sat_dir, 'util/plotting_utils/sifsat_whitestyle.mplstyle')
+
+
+def set_plot_fonts(plt, serif_style='sans-serif', font='Helvetica Neue'):
     """
     Set the fonts for matplotlib plots.
     This function configures the font settings for matplotlib plots by adding
@@ -43,15 +48,15 @@ def set_plot_fonts(plt, serif_style='sans-serif', font='Libre Franklin'):
         serif_style : str, optional
             The style of the font family to use, one of 'serif' or 'sans-serif'.
         font : str, optional
-            The name of the font to use (default is 'Libre Franklin').
+            The name of the font to use (default is 'Helvetica Neue').
     """
 
     # look for fonts in the fonts directory
-    all_fonts_dir = os.path.join(parent_dir, 'util/plotting_utils/fonts/')
+    all_fonts_dir = os.path.join(sif_sat_dir, 'util/plotting_utils/fonts/')
     font_dir = [os.path.join(all_fonts_dir, f) for f in os.listdir(all_fonts_dir) if os.path.isdir(os.path.join(all_fonts_dir, f))]
     # add font if available from user's environment
-    # if 'MPL_FONT_DIR' in os.environ.keys():
-    #     font_dir.append(os.environ['MPL_FONT_DIR'])
+    if 'MPL_FONT_DIR' in os.environ.keys():
+        font_dir.append(os.environ['MPL_FONT_DIR'])
 
     # add all the fonts to matplotlib's library
     for font in font_manager.findSystemFonts(font_dir):
