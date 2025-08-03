@@ -786,6 +786,8 @@ if __name__ == '__main__':
         else:
             raise KeyError('datetime column not found')
 
+    df_p3['datetime'] = pd.to_datetime(df_p3['datetime']) # convert to datetime object
+
     # if G-III file exists, read it, else None
     if args.date == '20240528': # transit for G-III, skip
         df_g3 = None
@@ -794,6 +796,16 @@ if __name__ == '__main__':
     else:
         if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
             df_g3 = pd.read_csv(g3_iwg_file, index_col=0)
+            # add datetime column if it does not exist
+            if 'datetime' not in df_g3.columns:
+                if 'UTC_Time' in df_g3.columns:
+                    df_g3['datetime'] = df_g3['UTC_Time']
+                elif 'Date/Time' in df_g3.columns:
+                    df_g3['datetime'] = df_g3['Date/Time']
+                else:
+                    raise KeyError('datetime column not found')
+
+            df_g3['datetime'] = pd.to_datetime(df_g3['datetime']) # convert to datetime object
 
         else:
             df_g3 = None
