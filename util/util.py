@@ -266,8 +266,11 @@ def load_aircraft_graphic(mode, width):
     if (mode.upper() == 'P3') or (mode.upper() == 'P-3'):
         img = Image.open(os.path.join(parent_dir, 'data/assets/p3_red_transparent.png'))
 
-    else:
+    elif (mode.upper() == 'G3') or (mode.upper() == 'G-3') or (mode.upper() == 'G-III'):
         img = Image.open(os.path.join(parent_dir, 'data/assets/giii_blue_transparent.png'))
+
+    elif (mode.upper() == 'LEAR') or (mode.upper() == 'LEARJET'):
+        img = Image.open(os.path.join(parent_dir, 'data/assets/learjet_green_transparent.png'))
 
     img = img.resize((int(width * 1.2), width)) # retain 1.2 aspect ratio
     return img
