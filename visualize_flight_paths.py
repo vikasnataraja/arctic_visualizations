@@ -477,7 +477,7 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, lear_data, i_p3, buoy_d
         img_p3 = p3_data['img']
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         axins.plot(p3_data['Longitude'], p3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
-        axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='cyan', alpha=0.75, zorder=5)
+        axins.plot(p3_data['Longitude'][:i_p3], p3_data['Latitude'][:i_p3], linewidth=2, transform=ccrs_geog, color='red', alpha=0.75, zorder=5)
         add_aircraft_graphic(axins, img_p3, p3_data['True_Heading'][i_p3], p3_data['Longitude'][i_p3], p3_data['Latitude'][i_p3], ccrs_geog, zorder=5)
 
     # now G-III if needed
@@ -714,7 +714,7 @@ def make_figures(outdir, p3_data, g3_data, lear_data, i_p3, buoy_data, sic_data,
     # Add inset map if within focus region
     if inset_map_settings[ymd_str]['start'] <= p3_time <= inset_map_settings[ymd_str]['end']:
 
-        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, i_p3=i_p3, buoy_data=buoy_data, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
+        add_inset(ax_parent=ax0, inset_extent=inset_map_settings[ymd_str]['extent'], p3_data=p3_data, g3_data=g3_data, lear_data=lear_data, i_p3=i_p3, buoy_data=buoy_data, bbox_to_anchor=(0.3, -0.05, 0.6, 0.6), width='75%', height='60%')
 
     # add science flight number as a bbox
     ax0.text(0.88, 0.05, 'NASA ARCSIX Science Flight {}'.format(flight_date_to_sf_dict[ymd_str][-2:]), fontweight="bold", color='black', fontsize=14, ha="center", va="center", ma="center", transform=ax0.transAxes, bbox=dict(facecolor=text_bg_colors[ymd_str], edgecolor='white', boxstyle='round, pad=0.5'))
