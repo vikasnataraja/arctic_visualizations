@@ -816,6 +816,7 @@ if __name__ == '__main__':
     if (lear_iwg_file is not None):
         df_lear = pd.read_csv(lear_iwg_file, index_col=0)
         df_lear = calculate_heading(df_lear, latitude_col='lat', longitude_col='lon') # add heading to the dataframe
+        df_lear['datetime'] = pd.to_datetime(df_lear['datetime']) # convert to datetime object
 
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir)
