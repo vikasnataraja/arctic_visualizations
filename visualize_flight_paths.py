@@ -44,11 +44,6 @@ if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Dar
     matplotlib.use('Agg') # for supercomputer only
 
 
-land_proj_filepath = '/Users/vikas/workspace/arctic/sif_sat/data/shapefiles/esri_world_countries_na_asia_northern_europe/World_Countries.prj'
-land_shapefile_path = '/Users/vikas/workspace/arctic/sif_sat/data/shapefiles/esri_world_countries_na_asia_northern_europe/World_Countries.shp'
-ocean_shapefile_path = '/Users/vikas/workspace/arctic/sif_sat/data/shapefiles/global_oceans_seas_flanders/goas_v01.shp'
-ocean_proj_filepath = '/Users/vikas/workspace/arctic/sif_sat/data/shapefiles/global_oceans_seas_flanders/goas_v01.prj'
-
 def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, coastline=True, ocean=True, gridlines=True, land=None, y_fontcolor='black', x_fontcolor='black', zorders={'land': 0, 'ocean': 1, 'coastline': 2, 'gridlines': 2}):
     """
     Adds ancillary features to the axis.
@@ -117,7 +112,7 @@ def add_ancillary(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccr
         spine.set_linewidth(1.5)
 
 
-def add_esri_features(ax, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, ocean=True, gridlines=True, coastline=True, land=True, x_fontcolor='black', y_fontcolor='black', zorders={'land': 0, 'ocean': 1, 'coastline': 2, 'gridlines': 2}, colors=None, y_inline=True):
+def add_esri_features(ax, land_proj_filepath, ocean_proj_filepath, land_shapefile_path, ocean_shapefile_path, simplify_geometry=True, title=None, scale=1, dx=20, dy=5, cartopy_black=False, ccrs_data=None, ocean=True, gridlines=True, coastline=True, land=True, x_fontcolor='black', y_fontcolor='black', zorders={'land': 0, 'ocean': 1, 'coastline': 2, 'gridlines': 2}, colors=None, y_inline=True):
     """
     Add cartopy features and styling elements (title, ocean/land color, coastlines, gridlines) to a cartopy map plot.
 
@@ -627,8 +622,8 @@ def make_figures(outdir, p3_data, g3_data, i_p3, buoy_data, sic_data, land):
     fig = plt.figure(figsize=(20, 20))
     gs = GridSpec(1, 1, figure=fig)
     ax0 = fig.add_subplot(gs[0], projection=ccrs_nearside)
-    # add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land, ocean=True, gridlines=False)
-    add_esri_features(ax0, dx=20, dy=5, land=None, ocean=False, coastline=True, gridlines=True)
+    add_ancillary(ax0, dx=20, dy=5, cartopy_black=True, coastline=True, land=land, ocean=True, gridlines=False)
+    # add_esri_features(ax0, dx=20, dy=5, land=None, ocean=False, coastline=True, gridlines=True)
 
     # first P3
     img_p3 = p3_data['img']
