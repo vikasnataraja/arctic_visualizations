@@ -777,6 +777,15 @@ if __name__ == '__main__':
     p3_iwg_file, g3_iwg_file, lear_iwg_file = get_filenames(args)
     df_p3 = pd.read_csv(p3_iwg_file, index_col=0)
 
+    # add datetime column if it does not exist
+    if 'datetime' not in df_p3.columns:
+        if 'UTC_Time' in df_p3.columns:
+            df_p3['datetime'] = df_p3['UTC_Time']
+        elif 'Date/Time' in df_p3.columns:
+            df_p3['datetime'] = df_p3['Date/Time']
+        else:
+            raise KeyError('datetime column not found')
+
     # if G-III file exists, read it, else None
     if args.date == '20240528': # transit for G-III, skip
         df_g3 = None
