@@ -717,11 +717,11 @@ def get_filenames(args):
 
         for flight_file in os.listdir(flight_dir):
             # check for P-3 MetNav IWG file
-            if ('ARCSIX-MetNav_P3B_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.ict')):
+            if ('ARCSIX-MetNav_P3B_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.csv')):
                 p3_iwg_file = os.path.join(flight_dir, flight_file)
 
             # check for G-III MetNav IWG file
-            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.txt')):
+            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.csv')):
                 g3_iwg_file = os.path.join(flight_dir, flight_file)
 
             # check for Learjet IWG file
