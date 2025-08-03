@@ -289,6 +289,22 @@ def get_time_indices(df, dt):
 
 
 def get_closest_datetime(dt, df_secondary):
+    """
+    Find the closest datetime in a DataFrame to a given datetime.
+
+    Args:
+    ----
+        dt (datetime): The reference datetime to compare against.
+        df_secondary (pd.DataFrame): DataFrame containing a 'datetime' column with
+            datetime values to compare with the reference.
+
+    Returns:
+    -------
+        tuple: A tuple containing:
+            - closest_dt (datetime): The datetime from the DataFrame that is closest to
+              the reference datetime.
+            - closest_dt_idx (int): The index of the closest datetime in the original list.
+    """
 
     dt_list = list(df_secondary['datetime'])
     sample_time = dt_list[0]
@@ -321,7 +337,15 @@ def report_g3_dates(df_g3):
     g3_start_dt = df_g3['datetime'].iloc[1].to_pydatetime()
     g3_end_dt   = df_g3['datetime'].iloc[len(df_g3) - 1].to_pydatetime()
     g3_flight_duration = viz_utils.format_time((g3_end_dt - g3_start_dt).total_seconds(), format='string')
-    print('Message [plot_flight_path]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+    print('Message [report_g3_dates]: G-III flight: {} to {}, total duration = {}'.format(g3_start_dt.strftime('%Y-%m-%d_%H%MZ'), g3_end_dt.strftime('%Y-%m-%d_%H%MZ'), g3_flight_duration))
+
+
+def report_lear_dates(df_lear):
+    # report times
+    lear_start_dt = df_lear['datetime'].iloc[1].to_pydatetime()
+    lear_end_dt   = df_lear['datetime'].iloc[len(df_lear) - 1].to_pydatetime()
+    lear_flight_duration = viz_utils.format_time((lear_end_dt - lear_start_dt).total_seconds(), format='string')
+    print('Message [report_lear_dates]: Lear flight: {} to {}, total duration = {}'.format(lear_start_dt.strftime('%Y-%m-%d_%H%MZ'), lear_end_dt.strftime('%Y-%m-%d_%H%MZ'), lear_flight_duration))
 
 
 def minimize_df(df, mode):
@@ -393,7 +417,7 @@ def add_aircraft_graphic(ax, img, heading, lon, lat, source_ccrs, zorder):
     ax.add_artist(AnnotationBbox(OffsetImage(img), (x, y), frameon=False, zorder=zorder))
 
 
-def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_to_anchor, width='75%', height='60%'):
+def add_inset(ax_parent, inset_extent, p3_data, g3_data, lear_data, i_p3, buoy_data, bbox_to_anchor, width='75%', height='60%'):
     """ Add inset to existing parent axis map"""
 
     p3_time = p3_data['datetime'][i_p3]
@@ -421,7 +445,12 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_t
         if (internal_extent[0] < g3_data['Longitude'][i_g3] < internal_extent[1]) and (internal_extent[2] < g3_data['Latitude'][i_g3] < internal_extent[3]):
             plot_g3 = True
 
-    if (not plot_p3) and (not plot_g3): # no need to plot
+    plot_lear = False
+    if len(lear_data) > 0:
+        if (internal_extent[0] < lear_data['lon'][-1] < internal_extent[1]) and (internal_extent[2] < lear_data['lat'][-1] < internal_extent[3]):
+            plot_lear = True
+
+    if (not plot_p3) and (not plot_g3) and (not plot_lear): # no need to plot
         return 0
 
     # load satellite params
@@ -454,12 +483,20 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, i_p3, buoy_data, bbox_t
     # now G-III if needed
     if plot_g3:
         _, i_g3 = get_closest_datetime(p3_time, g3_data)
-
         img_g3 = g3_data['img']
         # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
         axins.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
         axins.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
         add_aircraft_graphic(axins, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    # now Learjet if needed
+    if plot_lear:
+        _, i_lear = get_closest_datetime(p3_time, lear_data)
+        img_lear = lear_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        axins.plot(lear_data['lon'], lear_data['lat'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        axins.plot(lear_data['lon'][:i_lear], lear_data['lat'][:i_lear], linewidth=2, transform=ccrs_geog, color='darkgreen', alpha=0.75, zorder=5)
+        add_aircraft_graphic(axins, img_lear, lear_data['heading'][i_lear], lear_data['lon'][i_lear], lear_data['lat'][i_lear], ccrs_geog, zorder=5)
 
     if len(buoy_data) > 0:
 
@@ -580,6 +617,7 @@ def prepare_data(df_p3, df_g3, df_lear, outdir, dt):
     # load learjet image if it exists
     if df_lear is not None:
         img_lear = viz_utils.load_aircraft_graphic(mode='Lear', width=15) # G-III image graphic to be used as scatter marker
+        report_lear_dates(df_lear)
 
     else:
         img_lear = None # to prevent errors
@@ -592,7 +630,7 @@ def prepare_data(df_p3, df_g3, df_lear, outdir, dt):
     return outdir_with_date, p3_data, g3_data, lear_data, dt_idx_p3
 
 
-def make_figures(outdir, p3_data, g3_data, i_p3, buoy_data, sic_data, land):
+def make_figures(outdir, p3_data, g3_data, lear_data, i_p3, buoy_data, sic_data, land):
     """ Parallelized """
 
     p3_time = p3_data['datetime'][i_p3]
@@ -640,6 +678,15 @@ def make_figures(outdir, p3_data, g3_data, i_p3, buoy_data, sic_data, land):
         ax0.plot(g3_data['Longitude'], g3_data['Latitude'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
         ax0.plot(g3_data['Longitude'][:i_g3], g3_data['Latitude'][:i_g3], linewidth=2, transform=ccrs_geog, color='blue', alpha=0.75, zorder=5)
         add_aircraft_graphic(ax0, img_g3, g3_data['True_Hdg'][i_g3], g3_data['Longitude'][i_g3], g3_data['Latitude'][i_g3], ccrs_geog, zorder=5)
+
+    # now Lear if it exists
+    if len(lear_data) > 0:
+        _, i_lear = get_closest_datetime(p3_time, lear_data)
+        img_lear = lear_data['img']
+        # plot path in color until current pos; plot scatter with aircraft graphic at current pos; plot future path in transparent color
+        ax0.plot(lear_data['lon'], lear_data['lat'], linewidth=2, transform=ccrs_geog, color='black', alpha=0.25, linestyle='--', zorder=4)
+        ax0.plot(lear_data['lon'][:i_lear], lear_data['lat'][:i_lear], linewidth=2, transform=ccrs_geog, color='darkgreen', alpha=0.75, zorder=5)
+        add_aircraft_graphic(ax0, img_lear, lear_data['heading'][i_lear], lear_data['lon'][i_lear], lear_data['lat'][i_lear], ccrs_geog, zorder=5)
 
     # plot blue marble images
     if len(blue_marble_imgs) > 0:
@@ -869,11 +916,11 @@ if __name__ == '__main__':
         #     pool.starmap(make_figures, [(outdir_with_date, p3_data, g3_data, i_p3) for i_p3 in dt_idx_p3])
 
         with parallel_config(backend='multiprocessing', n_jobs=n_cores):
-            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, i_p3, buoy_data, sic_data, land) for i_p3 in dt_idx_p3)
+            Parallel()(delayed(make_figures)(outdir_with_date, p3_data, g3_data, lear_data, i_p3, buoy_data, sic_data, land) for i_p3 in dt_idx_p3)
 
     else: # serially
         for count, i_p3 in tqdm(enumerate(dt_idx_p3), total=dt_idx_p3.size):
-            _ = make_figures(outdir_with_date, p3_data, g3_data, i_p3, buoy_data, sic_data, land)
+            _ = make_figures(outdir_with_date, p3_data, g3_data, lear_data, i_p3, buoy_data, sic_data, land)
 
 
     exec_stop_dt = datetime.datetime.now() # to time sdown
