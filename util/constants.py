@@ -65,7 +65,7 @@ inset_map_settings = {
                                },
                     '20240730':{'start': datetime.datetime(2024, 7, 30, 12, 30),
                                 'end'  : datetime.datetime(2024, 7, 30, 16, 10),
-                                'extent':[-60, -20, 82, 85.5],
+                                'extent':[-80, -20, 82, 85.5],
                                 'connectors': [1, 3]
                                },
                     '20240801':{'start': datetime.datetime(2024, 8, 1, 13, 0),
