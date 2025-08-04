@@ -16,6 +16,32 @@ import os
 import datetime
 from argparse import ArgumentParser
 
+import re
+
+def sort_filenames_by_month_year(filenames):
+    """
+    Sort a list of filenames containing month-year tags (MM-YYYY format)
+    in chronological order.
+
+    Args:
+        filenames: List of strings with filenames in format like 'sia_MM-YYYY.png'
+
+    Returns:
+        List of sorted filenames in chronological order
+    """
+    def extract_date_key(filename):
+        # Extract month and year using regex
+        match = re.search(r'(\d{2})-(\d{4})', filename)
+        if match:
+            month, year = match.groups()
+            # Return as a tuple for sorting (year first, then month)
+            return (int(year), int(month))
+        # Fallback if pattern not found
+        return (0, 0)
+
+    # Sort using the extract_date_key function
+    return sorted(filenames, key=extract_date_key)
+
 
 if __name__ == "__main__":
 
@@ -49,7 +75,8 @@ if __name__ == "__main__":
             os.remove(outpath)
 
         fpngs = [png for png in os.listdir(os.path.join(args.fdir, sub)) if png.endswith('.png')]
-        fpngs = sorted(fpngs, key=lambda x: x.split('_')[1]) # sorted by time
+        fpngs = sorted(fpngs, key=lambda x: x.split('_')[0]) # sorted by time
+        # fpngs = sort_filenames_by_month_year(fpngs)
 
         with open(outpath, "w") as f:
             for i in range(len(fpngs)):
