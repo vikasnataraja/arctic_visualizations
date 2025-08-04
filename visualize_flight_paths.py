@@ -447,7 +447,8 @@ def add_inset(ax_parent, inset_extent, p3_data, g3_data, lear_data, i_p3, buoy_d
 
     plot_lear = False
     if len(lear_data) > 0:
-        if (internal_extent[0] < lear_data['lon'][-1] < internal_extent[1]) and (internal_extent[2] < lear_data['lat'][-1] < internal_extent[3]):
+        _, i_lear = get_closest_datetime(p3_time, lear_data)
+        if (internal_extent[0] < lear_data['lon'][i_lear] < internal_extent[1]) and (internal_extent[2] < lear_data['lat'][i_lear] < internal_extent[3]):
             plot_lear = True
 
     if (not plot_p3) and (not plot_g3) and (not plot_lear): # no need to plot
