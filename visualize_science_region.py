@@ -18,7 +18,7 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.lines
 import argparse
 import sys
-from visualize_flight_paths import get_filenames
+from visualize_flight_paths_with_sic import get_filenames
 
 
 def draw_extent(ax, extent, transform_crs=ccrs.PlateCarree()):

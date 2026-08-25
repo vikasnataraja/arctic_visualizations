@@ -764,7 +764,7 @@ def get_filenames(args):
                 p3_iwg_file = os.path.join(flight_dir, flight_file)
 
             # check for G-III MetNav IWG file
-            if ('GIII_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.csv')):
+            if ('ARCSIX-MetNav_G3_{}'.format(flight_dt_str) in flight_file) and (flight_file.endswith('.csv')):
                 g3_iwg_file = os.path.join(flight_dir, flight_file)
 
             # check for Learjet IWG file
