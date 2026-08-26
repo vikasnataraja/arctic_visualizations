@@ -1,32 +1,35 @@
-
+import argparse
+import logging
 import os
-import numpy as np
-import matplotlib
 import platform
-# set non-interactive backend early on headless systems to avoid GUI segfaults
-if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows')):
-    matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.patches
+import sys
+
+import cartopy
 import cartopy.crs as ccrs
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import matplotlib
+import matplotlib.lines
+import matplotlib.patches
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from tqdm import tqdm
 
-from util.plot_util import MPL_STYLE_PATH, set_plot_fonts
 import util.util as viz_utils
 from util.constants import inset_map_settings, flight_date_to_sf_dict, text_bg_colors
+from util.plot_util import MPL_STYLE_PATH
 
-from visualize_flight_paths_with_sic import add_esri_features, add_ancillary, add_aircraft_graphic, get_closest_datetime, get_time_indices, minimize_df, ccrs_nearside, ccrs_geog
-from matplotlib.gridspec import GridSpec
-import matplotlib.lines
-import argparse
-import sys
-from visualize_flight_paths_with_sic import get_filenames
-import time
-import traceback
-import resource
-import logging
+from visualize_flight_paths_with_sic import (
+    add_ancillary,
+    add_aircraft_graphic,
+    ccrs_geog,
+    get_closest_datetime,
+    get_filenames,
+    get_time_indices,
+    minimize_df,
+)
+
 
 
 def p(msg):
