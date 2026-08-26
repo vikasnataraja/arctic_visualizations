@@ -779,17 +779,20 @@ def get_filenames(args):
                 else:
                     lear_iwg_file = os.path.join(flight_dir, flight_file)
 
-        if p3_iwg_file is None: # do not proceed
-            print('Could not find the P-3 MetNav IWG File. Exiting...')
+        # None of the aircraft are required individually, but at least one aircraft
+        # must be available; if all are missing, then exit.
+        if p3_iwg_file is None and g3_iwg_file is None and lear_iwg_file is None:
+            print('Could not find any of the required IWG files for any of the aircraft. Exiting...')
             sys.exit()
 
-        if g3_iwg_file is None: # do not proceed
-            print('Could not find the G-III MetNav IWG File. Exiting...')
-            sys.exit()
+        if p3_iwg_file is None:
+            print('Could not find the P-3 MetNav IWG File.')
 
-        if lear_iwg_file is None: # do not proceed
-            print('Could not find the Learjet IWG File. Exiting...')
-            sys.exit()
+        if g3_iwg_file is None:
+            print('Could not find the G-III MetNav IWG File.')
+
+        if lear_iwg_file is None:
+            print('Could not find the Learjet IWG File.')
 
         return p3_iwg_file, g3_iwg_file, lear_iwg_file
 
