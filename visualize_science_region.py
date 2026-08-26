@@ -29,6 +29,14 @@ import resource
 import logging
 
 
+def p(msg):
+    # lightweight print helper that flushes immediately to aid debugging on HPC
+    try:
+        print(msg, flush=True)
+    except Exception:
+        pass
+
+
 def draw_extent(ax, extent, transform_crs=ccrs.PlateCarree()):
 
     x0, x1, y0, y1 = extent[0], extent[1], extent[2], extent[3]
@@ -75,6 +83,9 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
     if not os.path.isdir(outdir_with_date):
         os.makedirs(outdir_with_date)
 
+    p(f"[START] visualize_science_region for {ymd_str}")
+    p(f"outdir: {outdir_with_date}")
+
     # set up debug log if requested
     log_file = None
     if debug:
@@ -109,6 +120,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
 
     df_p3 = minimize_df(df_p3, 'P3')
     df_g3 = minimize_df(df_g3, 'G3')
+    p("after minimize_df")
 
     # default sampling interval
     if dt is None:
@@ -122,20 +134,24 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
     sat_img_cached = None
     xy_extent_target_cached = None
     if satellite and preload_sat:
+        p("preloading satellite image")
         try:
             sat_img_cached, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
             xy_extent_target_cached = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+            p("satellite preload OK")
             logging.info('Preloaded satellite image for %s', ymd_str) if debug else None
         except Exception as e:
             satellite = False
+            p(f"satellite preload failed: {e}")
             if debug:
                 logging.exception('Satellite preload failed: %s', e)
-            else:
-                print(f'Warning: satellite preload failed: {e}')
 
+    p(f"total frames to attempt: {dt_idx.size}")
     for count, i_p3 in enumerate(tqdm(dt_idx, total=dt_idx.size)):
         if (max_frames is not None) and (count >= max_frames):
             break
+
+        p(f"FRAME {count} index {i_p3}")
 
         p3_time = df_p3['datetime'].iloc[i_p3]
 
@@ -194,16 +210,20 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         # add_esri_features(ax, land=False, gridlines=True, coastline=True, ocean=False, dx=dx, dy=dy)
 
         if plot_p3:
+            p("plotting P3 path")
             ax.plot(df_p3['Longitude'], df_p3['Latitude'], transform=ccrs.Geodetic(), linewidth=2, linestyle='--', color='gray', zorder=2)
             ax.plot(df_p3['Longitude'].iloc[:i_p3], df_p3['Latitude'].iloc[:i_p3], transform=ccrs.Geodetic(), linewidth=2, color='red', zorder=3)
             add_aircraft_graphic(ax, img_p3, df_p3['True_Heading'].iloc[i_p3], df_p3['Longitude'].iloc[i_p3], df_p3['Latitude'].iloc[i_p3], ccrs_geog, zorder=4)
+            p("plotted P3 and aircraft icon")
 
 
         if plot_g3:
+            p("plotting G3 path")
             _, i_g3 = get_closest_datetime(p3_time, df_g3)
             ax.plot(df_g3['Longitude'], df_g3['Latitude'], transform=ccrs.Geodetic(), linewidth=2, linestyle='--', color='gray', zorder=2)
             ax.plot(df_g3['Longitude'].iloc[:i_g3], df_g3['Latitude'].iloc[:i_g3], transform=ccrs.Geodetic(), linewidth=2, color='blue', zorder=3)
             add_aircraft_graphic(ax, img_g3, df_g3['True_Hdg'].iloc[i_g3], df_g3['Longitude'].iloc[i_g3], df_g3['Latitude'].iloc[i_g3], ccrs_geog, zorder=4)
+            p("plotted G3 and aircraft icon")
 
 
         for i in range(len(labels)):
@@ -215,17 +235,20 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
 
         # add satellite underlay (use preloaded if available)
         try:
+            p("about to draw satellite image (if enabled)")
             if satellite and (sat_img_cached is not None):
                 ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=1)
+                p("drew cached satellite")
             elif satellite:
+                p("loading satellite for draw")
                 sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
                 xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
                 ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+                p("drew loaded satellite")
         except Exception as e:
+            p(f"satellite draw failed at frame {fname_dt_str}: {e}")
             if debug:
                 logging.exception('Satellite draw failed at frame %s: %s', fname_dt_str, e)
-            else:
-                print(f'Warning: satellite image draw failed for {ymd_str}: {e}')
 
         # apply view extent
         try:
