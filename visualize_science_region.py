@@ -210,7 +210,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         gs = GridSpec(1, 1, figure=fig)
 
         ax = fig.add_subplot(gs[0], projection=ccrs_geog)
-        # add_ancillary(ax, cartopy_black=False, land='default', gridlines=True, dx=dx, dy=dy, title=None)
+        add_ancillary(ax, cartopy_black=True, land='default', gridlines=True, dx=dx, dy=dy, title=None, x_fontcolor='black', y_fontcolor='black')
         # add_esri_features(ax, land=False, gridlines=True, coastline=True, ocean=False, dx=dx, dy=dy)
 
         if plot_p3:
