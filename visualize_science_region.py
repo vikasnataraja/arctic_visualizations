@@ -210,7 +210,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         gs = GridSpec(1, 1, figure=fig)
 
         ax = fig.add_subplot(gs[0], projection=ccrs_geog)
-        add_ancillary(ax, cartopy_black=True, land='default', gridlines=True, dx=dx, dy=dy, title=None, x_fontcolor='black', y_fontcolor='black')
+        add_ancillary(ax, cartopy_black=True, land='default', gridlines=True, dx=dx, dy=dy, title=None, x_fontcolor='black', y_fontcolor='black', zorders={'ocean': 0, 'land': 0, 'coastline': 1, 'gridlines': 2})
         # add_esri_features(ax, land=False, gridlines=True, coastline=True, ocean=False, dx=dx, dy=dy)
 
         if plot_p3:
@@ -249,14 +249,17 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
                 ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=1)
                 if debug:
                     p("drew cached satellite")
-            elif satellite:
+
+            elif satellite: # but not preloaded, so load on demand
                 if debug:
                     p("loading satellite for draw")
                 sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
                 xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
                 ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+
                 if debug:
                     p("drew loaded satellite")
+
         except Exception as e:
             if debug:
                 p(f"satellite draw failed at frame {fname_dt_str}: {e}")
