@@ -181,11 +181,11 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         ax.legend(handles=patches_legend, loc='lower right', bbox_to_anchor=(1, 0.0), facecolor='white',
                     ncol=1, fancybox=True, shadow=False, frameon=True, prop={'size': 12})
 
-        if satellite: # load satellite params
-            sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
-            xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+        # load satellite params
+        sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
+        xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
 
-            ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+        ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
 
         ax.set_extent(view_extent, crs=ccrs_geog)
 
@@ -227,7 +227,6 @@ if __name__ == '__main__':
     parser.add_argument('--iwg_dir', type=str, required=True, help='Path to directory containing IWG files')
     parser.add_argument('--date', type=str, required=True, help='Date in YYYYMMDD')
     parser.add_argument('--outdir', type=str, default='data/viz_agu_zoomed/', help='Output directory')
-    parser.add_argument('--satellite', action='store_true', help='Overlay satellite true-color image')
     parser.add_argument('--view_extent', type=str, default=None, help='Comma-separated lon0,lon1,lat0,lat1')
     parser.add_argument('--dt', type=int, default=60, help='Sampling interval in minutes')
 
@@ -256,5 +255,5 @@ if __name__ == '__main__':
         os.makedirs(args.outdir, exist_ok=True)
 
     # call the visualizer
-    visualize_science_region(df_p3=df_p3, df_g3=df_g3, satellite=args.satellite, view_extent=view_extent, dt=args.dt, outdir=args.outdir)
+    visualize_science_region(df_p3=df_p3, df_g3=df_g3, view_extent=view_extent, dt=args.dt, outdir=args.outdir)
 
