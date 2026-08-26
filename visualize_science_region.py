@@ -23,6 +23,10 @@ import matplotlib.lines
 import argparse
 import sys
 from visualize_flight_paths_with_sic import get_filenames
+import time
+import traceback
+import resource
+import logging
 
 
 def draw_extent(ax, extent, transform_crs=ccrs.PlateCarree()):
@@ -58,7 +62,7 @@ def add_globe_inset(ax_parent, inset_extent, bbox_to_anchor=(1.0, 1.0, 0.5, 0.5)
     axins.set_global()
 
 
-def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None, dx=None, dy=None, dt=None, outdir='data/viz_agu_zoomed/'):
+def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None, dx=None, dy=None, dt=None, outdir='data/viz_agu_zoomed/', debug=False, max_frames=None, preload_sat=True):
 
 
     # for title
@@ -70,6 +74,13 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
     outdir_with_date = os.path.join(outdir, ymd_str)
     if not os.path.isdir(outdir_with_date):
         os.makedirs(outdir_with_date)
+
+    # set up debug log if requested
+    log_file = None
+    if debug:
+        log_file = os.path.join(outdir_with_date, 'visualize_science_region.log')
+        logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s')
+        logging.info('Starting visualize_science_region for %s', ymd_str)
 
     if dx is None:
         dx = 10
@@ -107,7 +118,24 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
     img_p3 = viz_utils.load_aircraft_graphic(mode='P3', width=25)
     img_g3 = viz_utils.load_aircraft_graphic(mode='G3', width=20)
 
-    for i_p3 in tqdm(dt_idx, total=dt_idx.size):
+    # preload satellite image once to avoid repeated heavy IO/decoding
+    sat_img_cached = None
+    xy_extent_target_cached = None
+    if satellite and preload_sat:
+        try:
+            sat_img_cached, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
+            xy_extent_target_cached = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+            logging.info('Preloaded satellite image for %s', ymd_str) if debug else None
+        except Exception as e:
+            satellite = False
+            if debug:
+                logging.exception('Satellite preload failed: %s', e)
+            else:
+                print(f'Warning: satellite preload failed: {e}')
+
+    for count, i_p3 in enumerate(tqdm(dt_idx, total=dt_idx.size)):
+        if (max_frames is not None) and (count >= max_frames):
+            break
 
         p3_time = df_p3['datetime'].iloc[i_p3]
 
@@ -185,13 +213,19 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         ax.legend(handles=patches_legend, loc='lower right', bbox_to_anchor=(1, 0.0), facecolor='white',
                     ncol=1, fancybox=True, shadow=False, frameon=True, prop={'size': 12})
 
-        # load satellite params (guarded)
+        # add satellite underlay (use preloaded if available)
         try:
-            sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
-            xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
-            ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+            if satellite and (sat_img_cached is not None):
+                ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=1)
+            elif satellite:
+                sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
+                xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+                ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
         except Exception as e:
-            print(f"Warning: satellite image load failed for {ymd_str}: {e}")
+            if debug:
+                logging.exception('Satellite draw failed at frame %s: %s', fname_dt_str, e)
+            else:
+                print(f'Warning: satellite image draw failed for {ymd_str}: {e}')
 
         # apply view extent
         try:
@@ -211,8 +245,20 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         ax.set_aspect('auto')
 
         # fig.set_facecolor('black')
+        # report memory usage and save frame
+        if debug:
+            usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            logging.debug('Frame %s memory usage (ru_maxrss) = %s', fname_dt_str, usage)
+
         # save frame to file and close (no interactive display)
-        fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
+        try:
+            fig.savefig(fname_out, dpi=300, bbox_inches='tight', pad_inches=0.15)
+        except Exception as e:
+            if debug:
+                logging.exception('Failed saving frame %s: %s', fname_dt_str, e)
+            else:
+                print(f'Failed saving frame {fname_dt_str}: {e}')
+
         plt.close(fig)
 
     return 1
@@ -239,6 +285,9 @@ if __name__ == '__main__':
     parser.add_argument('--outdir', type=str, default='data/viz_agu_zoomed/', help='Output directory')
     parser.add_argument('--view_extent', type=str, default=None, help='Comma-separated lon0,lon1,lat0,lat1')
     parser.add_argument('--dt', type=int, default=60, help='Sampling interval in minutes')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging to file')
+    parser.add_argument('--max_frames', type=int, default=None, help='Limit number of frames to generate (for testing)')
+    parser.add_argument('--no_preload_sat', action='store_true', help='Do not preload satellite image (reduce memory spikes)')
 
     args = parser.parse_args()
 
@@ -265,5 +314,5 @@ if __name__ == '__main__':
         os.makedirs(args.outdir, exist_ok=True)
 
     # call the visualizer
-    visualize_science_region(df_p3=df_p3, df_g3=df_g3, view_extent=view_extent, dt=args.dt, outdir=args.outdir)
+    visualize_science_region(df_p3=df_p3, df_g3=df_g3, satellite=not args.no_preload_sat, view_extent=view_extent, dt=args.dt, outdir=args.outdir, debug=args.debug, max_frames=args.max_frames, preload_sat=(not args.no_preload_sat))
 
