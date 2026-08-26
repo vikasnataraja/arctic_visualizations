@@ -783,6 +783,14 @@ def get_filenames(args):
             print('Could not find the P-3 MetNav IWG File. Exiting...')
             sys.exit()
 
+        if g3_iwg_file is None: # do not proceed
+            print('Could not find the G-III MetNav IWG File. Exiting...')
+            sys.exit()
+
+        if lear_iwg_file is None: # do not proceed
+            print('Could not find the Learjet IWG File. Exiting...')
+            sys.exit()
+
         return p3_iwg_file, g3_iwg_file, lear_iwg_file
 
     else:

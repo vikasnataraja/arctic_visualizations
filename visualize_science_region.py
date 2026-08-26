@@ -17,7 +17,7 @@ from util.plot_util import MPL_STYLE_PATH, set_plot_fonts
 import util.util as viz_utils
 from util.constants import inset_map_settings, flight_date_to_sf_dict, text_bg_colors
 
-from visualize_flight_paths import add_esri_features, add_ancillary, add_aircraft_graphic, get_closest_datetime, get_time_indices, minimize_df, ccrs_nearside, ccrs_geog
+from visualize_flight_paths_with_sic import add_esri_features, add_ancillary, add_aircraft_graphic, get_closest_datetime, get_time_indices, minimize_df, ccrs_nearside, ccrs_geog
 from matplotlib.gridspec import GridSpec
 import matplotlib.lines
 import argparse
