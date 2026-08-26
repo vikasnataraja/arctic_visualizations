@@ -154,7 +154,8 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         if (max_frames is not None) and (count >= max_frames):
             break
 
-        p(f"FRAME {count} index {i_p3}")
+        if debug:
+            p(f"FRAME {count} index {i_p3}")
 
         p3_time = df_p3['datetime'].iloc[i_p3]
 
@@ -213,20 +214,24 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         # add_esri_features(ax, land=False, gridlines=True, coastline=True, ocean=False, dx=dx, dy=dy)
 
         if plot_p3:
-            p("plotting P3 path")
+            if debug:
+                p("plotting P3 path")
             ax.plot(df_p3['Longitude'], df_p3['Latitude'], transform=ccrs.Geodetic(), linewidth=2, linestyle='--', color='gray', zorder=2)
             ax.plot(df_p3['Longitude'].iloc[:i_p3], df_p3['Latitude'].iloc[:i_p3], transform=ccrs.Geodetic(), linewidth=2, color='red', zorder=3)
             add_aircraft_graphic(ax, img_p3, df_p3['True_Heading'].iloc[i_p3], df_p3['Longitude'].iloc[i_p3], df_p3['Latitude'].iloc[i_p3], ccrs_geog, zorder=4)
-            p("plotted P3 and aircraft icon")
+            if debug:
+                p("plotted P3 and aircraft icon")
 
 
         if plot_g3:
-            p("plotting G3 path")
+            if debug:
+                p("plotting G3 path")
             _, i_g3 = get_closest_datetime(p3_time, df_g3)
             ax.plot(df_g3['Longitude'], df_g3['Latitude'], transform=ccrs.Geodetic(), linewidth=2, linestyle='--', color='gray', zorder=2)
             ax.plot(df_g3['Longitude'].iloc[:i_g3], df_g3['Latitude'].iloc[:i_g3], transform=ccrs.Geodetic(), linewidth=2, color='blue', zorder=3)
             add_aircraft_graphic(ax, img_g3, df_g3['True_Hdg'].iloc[i_g3], df_g3['Longitude'].iloc[i_g3], df_g3['Latitude'].iloc[i_g3], ccrs_geog, zorder=4)
-            p("plotted G3 and aircraft icon")
+            if debug:
+                p("plotted G3 and aircraft icon")
 
 
         for i in range(len(labels)):
@@ -238,19 +243,23 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
 
         # add satellite underlay (use preloaded if available)
         try:
-            p("about to draw satellite image (if enabled)")
+            if debug:
+                p("about to draw satellite image (if enabled)")
             if satellite and (sat_img_cached is not None):
                 ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=1)
-                p("drew cached satellite")
+                if debug:
+                    p("drew cached satellite")
             elif satellite:
-                p("loading satellite for draw")
+                if debug:
+                    p("loading satellite for draw")
                 sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
                 xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
                 ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
-                p("drew loaded satellite")
+                if debug:
+                    p("drew loaded satellite")
         except Exception as e:
-            p(f"satellite draw failed at frame {fname_dt_str}: {e}")
             if debug:
+                p(f"satellite draw failed at frame {fname_dt_str}: {e}")
                 logging.exception('Satellite draw failed at frame %s: %s', fname_dt_str, e)
 
         # apply view extent
