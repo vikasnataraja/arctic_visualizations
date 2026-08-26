@@ -2,6 +2,10 @@
 import os
 import numpy as np
 import matplotlib
+import platform
+# set non-interactive backend early on headless systems to avoid GUI segfaults
+if not ((platform.uname().node == 'macbook') or (platform.uname().system == 'Darwin') or (platform.uname().system == 'Windows')):
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches
 import cartopy.crs as ccrs
@@ -181,13 +185,19 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
         ax.legend(handles=patches_legend, loc='lower right', bbox_to_anchor=(1, 0.0), facecolor='white',
                     ncol=1, fancybox=True, shadow=False, frameon=True, prop={'size': 12})
 
-        # load satellite params
-        sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
-        xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+        # load satellite params (guarded)
+        try:
+            sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
+            xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
+            ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+        except Exception as e:
+            print(f"Warning: satellite image load failed for {ymd_str}: {e}")
 
-        ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
-
-        ax.set_extent(view_extent, crs=ccrs_geog)
+        # apply view extent
+        try:
+            ax.set_extent(view_extent, crs=ccrs_geog)
+        except Exception:
+            pass
 
         globe_extent = ax.get_xbound() + ax.get_ybound()
         add_globe_inset(ax, globe_extent, bbox_to_anchor=(0.0, 0.0, 1.0, 1.0), width='20%', height='20%')
