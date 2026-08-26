@@ -1,7 +1,8 @@
 """
 ffmpeg_txt.py
 
-This script generates a metadata text file called `create_video_metadata.txt` for creating videos from PNG images using ffmpeg.
+This script generates a metadata text file called `create_video_metadata.txt`
+for creating videos from PNG images using ffmpeg.
 
 CLI Args:
     --fdir: Top-level source directory containing subdirectories with PNG images.
@@ -16,67 +17,97 @@ import os
 import datetime
 from argparse import ArgumentParser
 
-import re
 
-def sort_filenames_by_month_year(filenames):
+def sort_filenames_by_datetime(filenames):
     """
-    Sort a list of filenames containing month-year tags (MM-YYYY format)
-    in chronological order.
+    Sort filenames in chronological order.
+
+    Expected filename format:
+        YYYYMMDD_HHMMZ.png
+
+    Example:
+        20240730_0815Z.png
+        20240730_1620Z.png
+        20240731_0930Z.png
 
     Args:
-        filenames: List of strings with filenames in format like 'sia_MM-YYYY.png'
+        filenames: List of PNG filenames.
 
     Returns:
-        List of sorted filenames in chronological order
+        List of filenames sorted chronologically.
     """
-    def extract_date_key(filename):
-        # Extract month and year using regex
-        match = re.search(r'(\d{2})-(\d{4})', filename)
-        if match:
-            month, year = match.groups()
-            # Return as a tuple for sorting (year first, then month)
-            return (int(year), int(month))
-        # Fallback if pattern not found
-        return (0, 0)
-
-    # Sort using the extract_date_key function
-    return sorted(filenames, key=extract_date_key)
+    return sorted(filenames)
 
 
 if __name__ == "__main__":
 
     START_TIME = datetime.datetime.now()
+
     parser = ArgumentParser(prog='ffmpeg_txt')
-    parser.add_argument('--fdir', type=str, metavar='',
-                        help='Top-level source directory.\n')
-    parser.add_argument('--frame_rate', type=float, metavar='', default=0.5,
-                        help='Reciprocal of frame rate i.e., --frame rate=0.5 is 2 frames per second.\n')
-    parser.add_argument('--skip', nargs='+', type=str, metavar='', default=None,
-                        help='Names of the directories to skip. By default, no directories are skipped.')
+    parser.add_argument(
+        '--fdir',
+        type=str,
+        metavar='',
+        help='Top-level source directory.\n'
+    )
+    parser.add_argument(
+        '--frame_rate',
+        type=float,
+        metavar='',
+        default=0.5,
+        help='Reciprocal of frame rate i.e., --frame_rate=0.5 is 2 frames per second.\n'
+    )
+    parser.add_argument(
+        '--skip',
+        nargs='+',
+        type=str,
+        metavar='',
+        default=None,
+        help='Names of the directories to skip. By default, no directories are skipped.'
+    )
+
     args = parser.parse_args()
 
     if args.skip is None:
         skip_dirs = []
-
     else:
         skip_dirs = args.skip
-    # sort sub-directories by date
-    subs = sorted([f for f in os.listdir(args.fdir) if os.path.isdir(os.path.join(args.fdir, f))])
 
-    # make videos one by one
+    # Sort sub-directories by name
+    subs = sorted([
+        f for f in os.listdir(args.fdir)
+        if os.path.isdir(os.path.join(args.fdir, f))
+    ])
+
+    # Make videos one by one
     for sub in subs:
+
         if sub in skip_dirs:
             print("Message [ffmpeg_txt]: Skipping {}...".format(sub))
             continue
 
-        outpath = os.path.join(args.fdir, sub, 'create_video_metadata.txt')
-        if os.path.isfile(outpath): # if it already exists then delete it
-            print("File {} already exists...deleting before creating new file".format(outpath))
+        outpath = os.path.join(
+            args.fdir,
+            sub,
+            'create_video_metadata.txt'
+        )
+
+        if os.path.isfile(outpath):
+            print(
+                "File {} already exists...deleting before creating new file"
+                .format(outpath)
+            )
             os.remove(outpath)
 
-        fpngs = [png for png in os.listdir(os.path.join(args.fdir, sub)) if png.endswith('.png')]
-        fpngs = sorted(fpngs, key=lambda x: x.split('_')[0]) # sorted by time
-        # fpngs = sort_filenames_by_month_year(fpngs)
+        # Get PNG filenames
+        fpngs = [
+            png
+            for png in os.listdir(os.path.join(args.fdir, sub))
+            if png.endswith('.png')
+        ]
+
+        # Sort PNGs chronologically based on YYYYMMDD_HHMMZ filename format
+        fpngs = sort_filenames_by_datetime(fpngs)
 
         with open(outpath, "w") as f:
             for i in range(len(fpngs)):
@@ -84,5 +115,10 @@ if __name__ == "__main__":
                 f.write("duration {}\n".format(args.frame_rate))
 
     print("Finished creating video metadata file.\n")
+
     END_TIME = datetime.datetime.now()
-    print('Time taken to execute {}: {}'.format(os.path.basename(__file__), END_TIME - START_TIME))
+
+    print(
+        'Time taken to execute {}: {}'
+        .format(os.path.basename(__file__), END_TIME - START_TIME)
+    )
