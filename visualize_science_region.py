@@ -52,7 +52,9 @@ def add_globe_inset(ax_parent, inset_extent, bbox_to_anchor=(1.0, 1.0, 0.5, 0.5)
     # draw the science-region extent (use PlateCarree transform for lon/lat coords)
     draw_extent(axins, inset_extent, transform_crs=ccrs.PlateCarree())
     axins.set_global()
-def visualize_science_region(df_p3, df_g3=None, satellite=True, force_extent=False, view_extent=None, dx=None, dy=None, dt=None, outdir='data/viz_agu_zoomed/'):
+
+
+def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None, dx=None, dy=None, dt=None, outdir='data/viz_agu_zoomed/'):
 
 
     # for title
@@ -185,8 +187,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, force_extent=Fal
 
             ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
 
-        if force_extent:
-            ax.set_extent(view_extent, crs=ccrs_geog)
+        ax.set_extent(view_extent, crs=ccrs_geog)
 
         globe_extent = ax.get_xbound() + ax.get_ybound()
         add_globe_inset(ax, globe_extent, bbox_to_anchor=(0.0, 0.0, 1.0, 1.0), width='20%', height='20%')
@@ -227,7 +228,6 @@ if __name__ == '__main__':
     parser.add_argument('--date', type=str, required=True, help='Date in YYYYMMDD')
     parser.add_argument('--outdir', type=str, default='data/viz_agu_zoomed/', help='Output directory')
     parser.add_argument('--satellite', action='store_true', help='Overlay satellite true-color image')
-    parser.add_argument('--force_extent', action='store_true', help='Force view extent to inferred region')
     parser.add_argument('--view_extent', type=str, default=None, help='Comma-separated lon0,lon1,lat0,lat1')
     parser.add_argument('--dt', type=int, default=60, help='Sampling interval in minutes')
 
@@ -241,7 +241,6 @@ if __name__ == '__main__':
     if (g3_iwg_file is not None) and (os.path.isfile(g3_iwg_file)):
         df_g3 = _read_iwg_file(g3_iwg_file)
 
-    view_extent = None
     if args.view_extent is not None:
         parts = args.view_extent.split(',')
         if len(parts) == 4:
@@ -249,11 +248,13 @@ if __name__ == '__main__':
         else:
             print('`--view_extent` must be four comma-separated values: lon0,lon1,lat0,lat1')
             sys.exit(1)
+    else:
+        view_extent = inset_map_settings[args.date]['extent']
 
     # ensure outdir exists
     if not os.path.isdir(args.outdir):
         os.makedirs(args.outdir, exist_ok=True)
 
     # call the visualizer
-    visualize_science_region(df_p3=df_p3, df_g3=df_g3, satellite=args.satellite, force_extent=args.force_extent, view_extent=view_extent, dt=args.dt, outdir=args.outdir)
+    visualize_science_region(df_p3=df_p3, df_g3=df_g3, satellite=args.satellite, view_extent=view_extent, dt=args.dt, outdir=args.outdir)
 
