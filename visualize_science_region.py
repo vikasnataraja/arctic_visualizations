@@ -325,8 +325,6 @@ if __name__ == '__main__':
     parser.add_argument('--dt', type=int, default=60, help='Sampling interval in minutes')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging to file')
     parser.add_argument('--max_frames', type=int, default=None, help='Limit number of frames to generate (for testing)')
-    parser.add_argument('--no_preload_sat', action='store_true', help='Do not preload satellite image (reduce memory spikes)')
-
     args = parser.parse_args()
 
     # find filenames
@@ -352,5 +350,5 @@ if __name__ == '__main__':
         os.makedirs(args.outdir, exist_ok=True)
 
     # call the visualizer
-    visualize_science_region(df_p3=df_p3, df_g3=df_g3, satellite=not args.no_preload_sat, view_extent=view_extent, dt=args.dt, outdir=args.outdir, debug=args.debug, max_frames=args.max_frames, preload_sat=(not args.no_preload_sat))
+    visualize_science_region(df_p3=df_p3, df_g3=df_g3, view_extent=view_extent, dt=args.dt, outdir=args.outdir, debug=args.debug, max_frames=args.max_frames, preload_sat=(not args.no_preload_sat))
 
