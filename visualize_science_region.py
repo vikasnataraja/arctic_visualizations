@@ -350,5 +350,5 @@ if __name__ == '__main__':
         os.makedirs(args.outdir, exist_ok=True)
 
     # call the visualizer
-    visualize_science_region(df_p3=df_p3, df_g3=df_g3, view_extent=view_extent, dt=args.dt, outdir=args.outdir, debug=args.debug, max_frames=args.max_frames, preload_sat=(not args.no_preload_sat))
+    visualize_science_region(df_p3=df_p3, df_g3=df_g3, view_extent=view_extent, dt=args.dt, outdir=args.outdir, debug=args.debug, max_frames=args.max_frames)
 
