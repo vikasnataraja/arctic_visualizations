@@ -246,7 +246,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
             if debug:
                 p("about to draw satellite image (if enabled)")
             if satellite and (sat_img_cached is not None):
-                ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=1)
+                ax.imshow(sat_img_cached.filled(np.nan), extent=xy_extent_target_cached, transform=ccrs_geog, zorder=2)
                 if debug:
                     p("drew cached satellite")
 
@@ -255,7 +255,7 @@ def visualize_science_region(df_p3, df_g3=None, satellite=True, view_extent=None
                     p("loading satellite for draw")
                 sat_img, xy_extent_projection, geog_extent, ccrs_projection = viz_utils.load_satellite_image(ymd_str, mode='TrueColor')
                 xy_extent_target = viz_utils.transform_extent(xy_extent_projection, ccrs_projection, ccrs_geog)
-                ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=1)
+                ax.imshow(sat_img.filled(np.nan), extent=xy_extent_target, transform=ccrs_geog, zorder=2)
 
                 if debug:
                     p("drew loaded satellite")
